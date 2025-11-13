@@ -57,8 +57,25 @@
             font-size: 1.5rem;
         }
 
+        .card h3 {
+            margin: 20px 0 15px 0;
+            color: #5eb3f6;
+            font-size: 1.2rem;
+        }
+
         .input-group {
             margin-bottom: 15px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .input-row .input-group {
+            flex: 1;
+            margin-bottom: 0;
         }
 
         label {
@@ -94,6 +111,11 @@
         select option {
             background: #16213e;
             color: #fff;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
         }
 
         button {
@@ -138,6 +160,11 @@
             box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);
         }
 
+        .btn-warning {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            color: #fff;
+        }
+
         .btn-block {
             width: 100%;
             margin-top: 10px;
@@ -147,6 +174,79 @@
             display: none !important;
         }
 
+        /* Room/Task Selection */
+        .room-section {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .room-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .room-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .task-list {
+            list-style: none;
+            margin-left: 30px;
+        }
+
+        .task-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .task-item input[type="checkbox"] {
+            margin-top: 3px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* Collapsible Section */
+        .collapsible {
+            background: rgba(94, 179, 246, 0.2);
+            cursor: pointer;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border: 2px solid rgba(94, 179, 246, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .collapsible:hover {
+            background: rgba(94, 179, 246, 0.3);
+        }
+
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .collapsible-content.active {
+            max-height: 2000px;
+            transition: max-height 0.5s ease-in;
+        }
+
+        /* Game Stats */
         .game-stats {
             display: flex;
             justify-content: space-around;
@@ -176,6 +276,7 @@
             margin-top: 5px;
         }
 
+        /* Player Badges */
         .player-badge {
             background: rgba(255, 255, 255, 0.05);
             padding: 12px 20px;
@@ -183,64 +284,95 @@
             margin-bottom: 8px;
             font-size: 1.1rem;
             border: 2px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
-        .player-role {
-            display: inline-block;
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-size: 1rem;
-            font-weight: 600;
-            margin: 10px 0;
+        .player-ready {
+            border-color: #4caf50;
+        }
+
+        .ready-indicator {
+            background: #4caf50;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+        }
+
+        /* Role Display */
+        .role-display {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .role-hidden {
+            font-size: 2rem;
+            letter-spacing: 5px;
+            color: #666;
+            user-select: none;
+        }
+
+        .role-revealed {
+            font-size: 2rem;
+            font-weight: 700;
         }
 
         .role-imposter {
-            background: #ff3838;
-            color: #fff;
+            color: #ff3838;
         }
 
         .role-crewmate {
-            background: #5eb3f6;
-            color: #fff;
+            color: #5eb3f6;
         }
 
-        .task-list {
-            list-style: none;
-            margin-top: 15px;
+        /* Task Timer */
+        .task-timer {
+            text-align: center;
+            padding: 40px;
+            background: rgba(94, 179, 246, 0.2);
+            border-radius: 15px;
+            margin: 20px 0;
         }
 
-        .task-item {
-            padding: 10px;
-            margin-bottom: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 5px;
-            font-size: 1rem;
+        .timer-display {
+            font-size: 4rem;
+            font-weight: 700;
+            color: #5eb3f6;
+            margin: 20px 0;
+        }
+
+        .timer-task-name {
+            font-size: 1.5rem;
+            color: #ddd;
+            margin-bottom: 15px;
+        }
+
+        /* QR Code Display */
+        .qr-display {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+
+        .qr-placeholder {
+            width: 200px;
+            height: 200px;
+            background: white;
+            margin: 20px auto;
+            border-radius: 10px;
             display: flex;
             align-items: center;
+            justify-content: center;
+            color: #333;
         }
 
-        .task-item input[type="checkbox"] {
-            margin-right: 12px;
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-        }
-
-        .emergency-button {
-            font-size: 1.5rem;
-            padding: 20px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.05);
-            }
-        }
-
+        /* Meeting Overlay */
         .meeting-overlay {
             position: fixed;
             top: 0;
@@ -266,10 +398,12 @@
 
         .meeting-content {
             text-align: center;
+            max-width: 600px;
+            padding: 40px;
         }
 
         .meeting-content h2 {
-            font-size: 4rem;
+            font-size: 3rem;
             color: #fff;
             margin-bottom: 20px;
             animation: shake 0.5s infinite;
@@ -287,12 +421,122 @@
             }
         }
 
-        .view-switcher {
-            background: rgba(94, 179, 246, 0.2);
+        /* Voting Interface */
+        .vote-option {
+            background: rgba(255, 255, 255, 0.1);
             padding: 15px;
             border-radius: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .vote-option:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #5eb3f6;
+        }
+
+        .vote-option.selected {
+            background: rgba(94, 179, 246, 0.3);
+            border-color: #5eb3f6;
+        }
+
+        .vote-results {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .vote-bar {
+            background: rgba(94, 179, 246, 0.3);
+            height: 30px;
+            border-radius: 5px;
+            position: relative;
+            margin-top: 10px;
+        }
+
+        .vote-bar-fill {
+            background: #5eb3f6;
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.5s;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
             border: 2px solid rgba(94, 179, 246, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+        }
+
+        /* Victory/Defeat Screen */
+        .end-screen {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .victory {
+            background: rgba(76, 175, 80, 0.2);
+            border: 3px solid #4caf50;
+        }
+
+        .defeat {
+            background: rgba(255, 56, 56, 0.2);
+            border: 3px solid #ff3838;
+        }
+
+        .end-screen h2 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .victory h2 {
+            color: #4caf50;
+        }
+
+        .defeat h2 {
+            color: #ff3838;
         }
 
         @media (max-width: 768px) {
@@ -300,8 +544,16 @@
                 font-size: 2rem;
             }
 
+            .input-row {
+                flex-direction: column;
+            }
+
+            .timer-display {
+                font-size: 3rem;
+            }
+
             .meeting-content h2 {
-                font-size: 2.5rem;
+                font-size: 2rem;
             }
         }
     </style>
@@ -309,182 +561,792 @@
 <body>
     <div class="container">
         <header>
-            <h1>🚀 Among Us Game Manager</h1>
-            <p class="subtitle">Manage your in-person Among Us game</p>
+            <h1>🚀 Among Us IRL</h1>
+            <p class="subtitle">In-Person Game Manager</p>
         </header>
 
-        <!-- Stage 1: Game Setup (Host Only) -->
+        <!-- STAGE 1: GAME SETUP -->
         <div id="setup-phase">
             <div class="card">
-                <h2>Stage 1: Game Setup</h2>
-                <p style="color: #a0a0a0; margin-bottom: 25px;">Configure your game settings</p>
+                <h2>Game Setup</h2>
 
-                <div class="input-group">
-                    <label for="player-count">Number of Players:</label>
-                    <input type="number" id="player-count" min="3" max="15" value="5">
+                <!-- General Setup -->
+                <h3>General Settings</h3>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label for="min-players">Minimum Players (recommended ≥4):</label>
+                        <input type="number" id="min-players" min="3" max="15" value="4">
+                    </div>
+                    <div class="input-group">
+                        <label for="max-players">Maximum Players (recommended ≤15):</label>
+                        <input type="number" id="max-players" min="3" max="15" value="10">
+                    </div>
                 </div>
 
+                <div class="input-group">
+                    <label for="tasks-per-player">Tasks per Player:</label>
+                    <input type="number" id="tasks-per-player" min="1" max="10" value="4">
+                </div>
+
+                <!-- Room & Task Selection -->
+                <h3>Rooms & Tasks</h3>
+                <div class="collapsible" onclick="toggleCollapsible(this)">
+                    <span>Select Rooms and Tasks in Play</span>
+                    <span>▼</span>
+                </div>
+                <div class="collapsible-content">
+                    <div id="rooms-tasks-container"></div>
+                </div>
+
+                <!-- Unique Tasks Configuration -->
+                <h3>Unique Tasks</h3>
+                <div class="input-group">
+                    <label>
+                        <input type="radio" name="unique-mode" value="none" checked> No unique tasks
+                    </label>
+                    <label>
+                        <input type="radio" name="unique-mode" value="random"> Randomly assign
+                        <input type="number" id="unique-count" min="1" max="3" value="2" style="width: 60px; display: inline-block; padding: 5px;"> unique task(s)
+                    </label>
+                    <label>
+                        <input type="radio" name="unique-mode" value="manual"> Manually select unique tasks (flag them above)
+                    </label>
+                </div>
+
+                <!-- Imposter Setup -->
+                <h3>Imposter Settings</h3>
                 <div class="input-group">
                     <label for="imposter-count">Number of Imposters:</label>
                     <input type="number" id="imposter-count" min="1" max="3" value="1">
+                    <small style="color: #a0a0a0; display: block; margin-top: 5px;">
+                        Recommended: 4-5 players = 1, 6-8 players = 2, 9-15 players = 3
+                    </small>
+                </div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label for="elimination-cooldown">Elimination Cooldown (seconds):</label>
+                        <input type="number" id="elimination-cooldown" min="10" max="120" value="30">
+                    </div>
+                    <div class="input-group">
+                        <label for="cooldown-reduction">Cooldown Reduction After Meeting (seconds):</label>
+                        <input type="number" id="cooldown-reduction" min="0" max="30" value="5">
+                    </div>
                 </div>
 
+                <!-- Meeting Setup -->
+                <h3>Meeting Settings</h3>
                 <div class="input-group">
-                    <label for="tasks-per-player">Tasks per Crewmate:</label>
-                    <input type="number" id="tasks-per-player" min="1" max="10" value="3">
+                    <label for="meeting-room">Meeting Location:</label>
+                    <select id="meeting-room">
+                        <option value="">Select a room...</option>
+                    </select>
+                </div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label for="meeting-limit">Emergency Meetings Allowed:</label>
+                        <input type="number" id="meeting-limit" min="0" max="10" value="1">
+                        <small style="color: #a0a0a0; display: block; margin-top: 5px;">Default: 1 per player</small>
+                    </div>
+                    <div class="input-group">
+                        <label for="meeting-timer">Meeting Timer (seconds):</label>
+                        <input type="number" id="meeting-timer" min="30" max="300" value="60">
+                    </div>
+                </div>
+
+                <!-- Additional Rules -->
+                <h3>Additional Rules</h3>
+                <div class="input-group">
+                    <label for="additional-rules">Additional Instructions (out-of-bounds areas, special rules, etc.):</label>
+                    <textarea id="additional-rules" placeholder="Example: The basement and second floor are out of bounds. Stay on the main floor only."></textarea>
                 </div>
 
                 <button class="btn-primary btn-block" onclick="createGame()">Create Game & Enter Waiting Room</button>
             </div>
         </div>
 
-        <!-- Stage 2: Waiting Room -->
+        <!-- STAGE 2: WAITING ROOM -->
         <div id="waiting-room" class="hidden">
             <div class="card">
-                <h2>Stage 2: Waiting Room</h2>
+                <h2>Waiting Room</h2>
 
-                <!-- Room Code Display -->
+                <!-- Room Code & QR -->
                 <div style="background: rgba(94, 179, 246, 0.2); border: 3px solid rgba(94, 179, 246, 0.5); border-radius: 15px; padding: 25px; margin-bottom: 25px; text-align: center;">
-                    <p style="color: #a0a0a0; margin-bottom: 10px; font-size: 0.9rem;">Share this code with your friends:</p>
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+                    <p style="color: #a0a0a0; margin-bottom: 10px;">Share this code or scan the QR:</p>
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px;">
                         <div id="room-code" style="font-size: 3rem; font-weight: 700; letter-spacing: 8px; color: #5eb3f6;">ABCD</div>
-                        <button onclick="copyRoomCode()" class="btn-primary" style="padding: 15px 25px;">
-                            📋 Copy
+                        <button onclick="copyGameURL()" class="btn-primary" style="padding: 15px 25px;">
+                            📋 Copy URL
                         </button>
                     </div>
-                    <p id="copy-feedback" style="color: #4caf50; margin-top: 10px; font-weight: 600; opacity: 0; transition: opacity 0.3s;">Copied to clipboard!</p>
+                    <div class="qr-placeholder" style="width: 200px; height: 200px; margin: 10px auto; background: white; border-radius: 10px; padding: 10px; display: flex; align-items: center; justify-content: center;">
+                        <img id="qr-code-image" src="" alt="QR Code" style="width: 100%; height: 100%;">
+                    </div>
+                    <p id="copy-feedback" style="color: #4caf50; margin-top: 10px; font-weight: 600; opacity: 0; transition: opacity 0.3s;">URL copied to clipboard!</p>
                 </div>
 
+                <!-- Action Buttons -->
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button class="btn-primary" onclick="showInstructions()" style="flex: 1;">
+                        📖 Game Instructions
+                    </button>
+                    <button class="btn-warning" onclick="editSettings()" style="flex: 1;" id="edit-settings-btn">
+                        ⚙️ Edit Settings
+                    </button>
+                </div>
+
+                <!-- Game Stats -->
                 <div class="game-stats">
                     <div class="stat-box">
-                        <div class="stat-number"><span id="joined-count">0</span>/<span id="total-slots">0</span></div>
-                        <div class="stat-label">Players Joined</div>
+                        <div class="stat-number"><span id="ready-count">0</span>/<span id="min-players-display">4</span></div>
+                        <div class="stat-label">Ready / Minimum</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-number" id="imposter-count-display">0</div>
+                        <div class="stat-number"><span id="joined-count">0</span>/<span id="max-players-display">10</span></div>
+                        <div class="stat-label">Joined / Maximum</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number" id="imposter-count-display">1</div>
                         <div class="stat-label">Imposters</div>
                     </div>
                 </div>
 
+                <!-- Join Section -->
                 <div class="card" style="background: rgba(255, 255, 255, 0.05);">
-                    <h3 style="margin-bottom: 15px; color: #5eb3f6;">Join the Game:</h3>
-                    <p style="color: #a0a0a0; margin-bottom: 15px; font-size: 0.9rem;">Enter your name to join the lobby</p>
-                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                        <input type="text" id="player-name-input" placeholder="Your name" style="flex: 1;">
-                        <button class="btn-primary" onclick="joinGame()">Join</button>
+                    <h3>Join the Game</h3>
+
+                    <!-- Form to join game (shown when not joined) -->
+                    <div id="join-form">
+                        <p style="color: #a0a0a0; margin-bottom: 15px;">Enter your name to join the lobby</p>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="player-name-input" placeholder="Your name" style="flex: 1;">
+                            <button class="btn-primary" onclick="joinGame()">Join</button>
+                        </div>
+                        <p id="room-full-message" class="hidden" style="color: #ff3838; margin-top: 10px; font-weight: 600;">
+                            Room is full! Maximum players reached.
+                        </p>
                     </div>
 
-                    <h3 style="margin: 20px 0 15px 0; color: #5eb3f6;">Players in Lobby:</h3>
+                    <!-- Already joined view (shown after joining) -->
+                    <div id="already-joined" class="hidden">
+                        <p style="color: #4caf50; margin-bottom: 15px;">✓ You have joined as <strong id="my-player-name"></strong></p>
+                        <button class="btn-primary" onclick="editMyName()" style="width: 100%;">✏️ Edit My Name</button>
+                        <button class="btn-warning" onclick="leaveGame()" style="width: 100%; margin-top: 10px;">Leave Game</button>
+                    </div>
+                </div>
+
+                <!-- Players List -->
+                <div class="card" style="background: rgba(255, 255, 255, 0.05);">
+                    <h3>Players Ready (<span id="ready-list-count">0</span>)</h3>
                     <div id="lobby-players"></div>
                 </div>
 
+                <!-- Host Controls -->
                 <button class="btn-success btn-block" onclick="startGame()" id="start-game-btn" disabled>
-                    Start Game (Need at least 3 players)
+                    Start Game (Waiting for minimum players to be ready)
                 </button>
             </div>
         </div>
 
-        <!-- Stage 3: Game Play -->
+        <!-- STAGE 3: GAMEPLAY -->
         <div id="game-phase" class="hidden">
-            <!-- View Switcher -->
-            <div class="view-switcher">
-                <label for="player-select" style="display: block; margin-bottom: 10px;">
-                    👤 Viewing as:
-                </label>
-                <select id="player-select" onchange="switchPlayerView()">
-                    <option value="host">Host View (All Players)</option>
-                </select>
-            </div>
-
-            <!-- Host View: All Players -->
-            <div id="host-view">
-                <div class="card">
-                    <button class="btn-danger btn-block emergency-button" onclick="callEmergencyMeeting()">
-                        🚨 EMERGENCY MEETING 🚨
-                    </button>
-                </div>
-
-                <div class="card">
-                    <h2>All Players (Host View)</h2>
-                    <div id="all-players-list"></div>
-                </div>
-            </div>
-
-            <!-- Individual Player View -->
-            <div id="player-view" class="hidden">
-                <div class="card">
-                    <button class="btn-danger btn-block emergency-button" onclick="callEmergencyMeeting()">
-                        🚨 EMERGENCY MEETING 🚨
-                    </button>
-                </div>
-
-                <div class="card">
-                    <div style="text-align: center; margin-bottom: 30px;">
-                        <h2 id="current-player-name" style="font-size: 2rem; margin-bottom: 15px;"></h2>
-                        <span id="current-player-role" class="player-role" style="font-size: 1.2rem; padding: 10px 25px;"></span>
-                    </div>
-
-                    <div id="current-player-tasks"></div>
-                </div>
-            </div>
-
+            <!-- Role Display -->
             <div class="card">
-                <button class="btn-success btn-block" onclick="endGame()">End Game</button>
+                <h2>Your Role</h2>
+                <div class="role-display">
+                    <div id="role-hidden" class="role-hidden">••••••••</div>
+                    <div id="role-revealed" class="hidden">
+                        <span id="role-text"></span>
+                    </div>
+                    <button class="btn-primary" onclick="toggleRole()" style="margin-top: 15px;" id="toggle-role-btn">
+                        👁️ Reveal Role
+                    </button>
+                </div>
+            </div>
+
+            <!-- Task List -->
+            <div class="card" id="task-list-card">
+                <h2>Your Tasks (<span id="completed-tasks-count">0</span>/<span id="total-tasks-count">0</span>)</h2>
+                <div id="player-tasks"></div>
+            </div>
+
+            <!-- Imposter Actions -->
+            <div class="card hidden" id="imposter-actions">
+                <h2>Imposter Actions</h2>
+                <p style="color: #a0a0a0; margin-bottom: 15px;">Elimination cooldown: <span id="cooldown-timer">30s</span></p>
+                <button class="btn-danger btn-block" onclick="eliminatePlayer()" id="eliminate-btn">
+                    ☠️ Eliminate Target
+                </button>
+            </div>
+
+            <!-- Emergency Meeting Button -->
+            <div class="card">
+                <button class="btn-danger btn-block" onclick="callMeeting()" style="font-size: 1.5rem; padding: 20px;">
+                    🚨 CALL MEETING 🚨
+                </button>
+                <p style="text-align: center; color: #a0a0a0; margin-top: 10px;">
+                    Emergency meetings remaining: <span id="meetings-remaining">1</span>
+                </p>
             </div>
         </div>
-    </div>
 
-    <!-- Stage 4: Emergency Meeting Overlay -->
-    <div id="meeting-overlay" class="meeting-overlay hidden">
-        <div class="meeting-content">
-            <h2>🚨 EMERGENCY MEETING 🚨</h2>
-            <p style="font-size: 1.5rem; margin-bottom: 30px;">RETURN TO MEETING POINT NOW!</p>
-            <button class="btn-primary" style="font-size: 1.2rem; padding: 15px 40px;" onclick="dismissMeeting()">
-                Dismiss Alert
-            </button>
+        <!-- STAGE 4: MEETING -->
+        <div id="meeting-phase" class="hidden">
+            <!-- Meeting Type Selection -->
+            <div class="card" id="meeting-type-selection">
+                <h2>Meeting Called</h2>
+                <p style="color: #a0a0a0; margin-bottom: 20px;">What type of meeting is this?</p>
+                <button class="btn-danger btn-block" onclick="selectMeetingType('report')">
+                    📋 Report Body
+                </button>
+                <button class="btn-warning btn-block" onclick="selectMeetingType('emergency')">
+                    🚨 Emergency Meeting
+                </button>
+            </div>
+
+            <!-- Report Body Selection -->
+            <div class="card hidden" id="report-selection">
+                <h2>Report Body</h2>
+                <p style="color: #a0a0a0; margin-bottom: 15px;">Select eliminated player(s):</p>
+                <div id="eliminated-players-list"></div>
+                <button class="btn-primary btn-block" onclick="confirmReport()">Confirm Report</button>
+            </div>
+
+            <!-- Discussion Phase -->
+            <div class="card hidden" id="discussion-phase">
+                <h2>Discussion Phase</h2>
+                <p style="text-align: center; color: #a0a0a0; margin-bottom: 20px;">
+                    Discuss who you think the imposter is...
+                </p>
+                <div style="text-align: center;">
+                    <div class="timer-display" id="discussion-timer">60</div>
+                    <button class="btn-success btn-block" onclick="startVoting()" id="start-voting-btn">
+                        Start Voting
+                    </button>
+                </div>
+            </div>
+
+            <!-- Voting Phase -->
+            <div class="card hidden" id="voting-phase">
+                <h2>Vote to Eject</h2>
+                <p style="text-align: center; color: #a0a0a0; margin-bottom: 15px;">
+                    Time remaining: <span id="vote-timer">60</span>s
+                </p>
+                <div id="vote-options"></div>
+                <button class="btn-primary btn-block" onclick="submitVote()" id="submit-vote-btn" disabled>
+                    Submit Vote
+                </button>
+            </div>
+
+            <!-- Vote Results -->
+            <div class="card hidden" id="vote-results">
+                <h2>Vote Results</h2>
+                <div id="results-display"></div>
+                <div style="margin-top: 20px; padding: 20px; background: rgba(255, 255, 255, 0.05); border-radius: 10px; text-align: center;">
+                    <h3 id="ejected-player-text"></h3>
+                </div>
+                <button class="btn-success btn-block" onclick="resumeGame()">
+                    Resume Game
+                </button>
+            </div>
+        </div>
+
+        <!-- STAGE 5: GAME END -->
+        <div id="game-end" class="hidden">
+            <!-- Victory/Defeat Screen -->
+            <div id="victory-screen" class="end-screen hidden">
+                <h2>🎉 VICTORY 🎉</h2>
+                <p style="font-size: 1.5rem; margin: 20px 0;">Your team won!</p>
+                <p style="color: #a0a0a0;">Return to the meeting location: <span id="meeting-location-victory">Living Room</span></p>
+                <button class="btn-primary" onclick="closeVictoryScreen()">View Game Summary</button>
+            </div>
+
+            <div id="defeat-screen" class="end-screen hidden">
+                <h2>💀 DEFEAT 💀</h2>
+                <p style="font-size: 1.5rem; margin: 20px 0;">Your team was defeated!</p>
+                <p style="color: #a0a0a0;">Return to the meeting location: <span id="meeting-location-defeat">Living Room</span></p>
+                <button class="btn-primary" onclick="closeDefeatScreen()">View Game Summary</button>
+            </div>
+
+            <!-- Game Summary -->
+            <div class="card">
+                <h2>Game Summary</h2>
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h3 id="winning-team" style="font-size: 2rem;"></h3>
+                </div>
+
+                <h3>All Players</h3>
+                <div id="game-summary"></div>
+
+                <!-- Host Controls -->
+                <div style="margin-top: 30px;">
+                    <button class="btn-success btn-block" onclick="newGameSameSettings()">
+                        🔄 New Game (Same Settings)
+                    </button>
+                    <button class="btn-primary btn-block" onclick="newGameNewSettings()">
+                        ⚙️ New Game (Change Settings)
+                    </button>
+                    <button class="btn-danger btn-block" onclick="endSession()">
+                        🚪 End Session
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Task Timer Modal -->
+        <div id="task-timer-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="task-timer">
+                    <h2 id="timer-task-name" class="timer-task-name"></h2>
+                    <div class="timer-display" id="task-timer-display">30</div>
+                    <p style="color: #a0a0a0;">Complete this task...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Eliminated QR Modal -->
+        <div id="eliminated-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="qr-display">
+                    <h2 style="color: #ff3838; margin-bottom: 20px;">You Have Been Eliminated</h2>
+                    <p style="color: #a0a0a0; margin-bottom: 20px;">
+                        Show this QR code when your body is discovered
+                    </p>
+                    <div class="qr-placeholder" style="width: 200px; height: 200px; margin: 10px auto; background: white; border-radius: 10px; padding: 10px; display: flex; align-items: center; justify-content: center;">
+                        <img id="eliminated-qr-code" src="" alt="Eliminated QR Code" style="width: 100%; height: 100%;">
+                    </div>
+                    <button class="btn-primary" onclick="closeEliminatedModal()" style="margin-top: 20px;">
+                        Continue Doing Tasks
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions Modal -->
+        <div id="instructions-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Game Instructions</h2>
+                    <button class="modal-close" onclick="closeInstructions()">×</button>
+                </div>
+
+                <h3>How to Win</h3>
+                <h4 style="color: #5eb3f6; margin-top: 15px;">Crewmates Win If:</h4>
+                <ul style="margin-left: 20px; margin-bottom: 15px; line-height: 1.8;">
+                    <li>All tasks are completed (including tasks of eliminated players)</li>
+                    <li>All imposters are eliminated</li>
+                </ul>
+
+                <h4 style="color: #ff3838;">Imposters Win If:</h4>
+                <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
+                    <li>Number of imposters equals remaining crewmates (forcing tied votes)</li>
+                </ul>
+
+                <h3>Important Rules</h3>
+                <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
+                    <li><strong>Crewmates must walk.</strong> Imposters can move at any speed.</li>
+                    <li><strong>Stay safe.</strong> Don't do a task if it would put you in danger. Report concerns to the host.</li>
+                    <li><strong>Eliminated players can still complete tasks</strong> - your contributions still count toward crew victory!</li>
+                </ul>
+
+                <h3>Additional Rules</h3>
+                <p id="additional-rules-display" style="color: #a0a0a0; margin-bottom: 20px;"></p>
+
+                <button class="btn-primary btn-block" onclick="closeInstructions()">Got It!</button>
+            </div>
+        </div>
+
+        <!-- Meeting Alert Overlay -->
+        <div id="meeting-overlay" class="meeting-overlay hidden">
+            <div class="meeting-content">
+                <h2>🚨 MEETING CALLED 🚨</h2>
+                <p style="font-size: 1.5rem; margin-bottom: 30px;">Return to: <span id="meeting-location-alert">Meeting Room</span></p>
+                <button class="btn-primary" style="font-size: 1.2rem; padding: 15px 40px;" onclick="acknowledgeMeeting()">
+                    I'm Here
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
-        // Available tasks for crewmates
-        const availableTasks = [
-            "Empty Garbage",
-            "Fix Wiring",
-            "Download Data",
-            "Upload Data",
-            "Swipe Card",
-            "Start Reactor",
-            "Align Engine Output",
-            "Calibrate Distributor",
-            "Chart Course",
-            "Clean O2 Filter",
-            "Clear Asteroids",
-            "Fuel Engines",
-            "Inspect Sample",
-            "Prime Shields",
-            "Stabilize Steering",
-            "Submit Scan",
-            "Unlock Manifolds",
-            "Divert Power",
-            "Replace Water Jug",
-            "Fix Weather Node"
-        ];
-
-        let gameState = {
-            stage: 'setup', // setup, waiting, playing, meeting
-            settings: {
-                playerCount: 5,
-                imposterCount: 1,
-                tasksPerPlayer: 3
-            },
-            roomCode: '',
-            players: [],
-            currentView: 'host'
+        // Game data structure
+        const ROOMS_AND_TASKS = {
+            "Anywhere": [
+                "Power Down Protocol: Close your eyes, stand still, and count out loud for 30 seconds."
+            ],
+            "Outside": [
+                "Stellar Navigation: Look at the sky for 20 seconds.",
+                "Suspicious Surveillance: Stand in front of a neighbor's house for 20 seconds.",
+                "House Boundary Scan: Touch all four outside corners of the house.",
+                "Prepare the Runway: Lay down and roll across the driveway.",
+                "Touch Grass: Remove your footwear and stand on the grass for 5 seconds.",
+                "Test Comms: Put your head in the mailbox for 15 seconds."
+            ],
+            "Living Room": [
+                "Living Room Groove: Dance in the living room for 20 seconds.",
+                "Couch Compression Test: Sit on every seat cushion once.",
+                "Remote Frequency Calibration: Find the TV remote and press any button.",
+                "Light Sync: Turn a lamp off, then on again."
+            ],
+            "Kitchen": [
+                "Heat Sensor Check: Open the oven/microwave door for 20 seconds, then close it.",
+                "Cold Storage Audit: Open the fridge and name three items out loud.",
+                "Utensil Sort: Use utensils to spell the word 'CREW' and then return them.",
+                "Water Pressure Test: Run the sink for 3 seconds.",
+                "Nutrient Calibration: Touch 3 different types of food and name them out loud."
+            ],
+            "Garage": [
+                "Navigation Calibration: Touch all 4 corners of the garage.",
+                "Tool Inventory Scan: Locate 3 different tools and name them out loud.",
+                "Vehicle Diagnostics: Place your hand on a car tire for 20 seconds."
+            ],
+            "Bedrooms": [
+                "Sleep Reset: Lie face down on a bed for 20 seconds.",
+                "Meditation Moment: Assume a meditative pose and hold it for 20 seconds.",
+                "Initialization Routine: Do 1 pushup, 1 sit-up, and 1 jumping jack."
+            ],
+            "Bathrooms": [
+                "Emergency Water Reset: Turn both faucets on and off.",
+                "Sit in a bathtub for 15 seconds."
+            ],
+            "Closets": [
+                "Spend 10 seconds in three different closets. The door must be closed."
+            ],
+            "Office": [
+                "Data Upload: Read a book in the office for 15 seconds."
+            ],
+            "Other": [
+                "Put your head in the washing machine for 10 seconds.",
+                "Put your head in the dryer for 10 seconds."
+            ]
         };
 
-        // Generate random room code
+        let gameState = {
+            stage: 'setup',
+            roomCode: '',
+            settings: {
+                minPlayers: 4,
+                maxPlayers: 10,
+                tasksPerPlayer: 4,
+                imposterCount: 1,
+                eliminationCooldown: 30,
+                cooldownReduction: 5,
+                meetingRoom: '',
+                meetingLimit: 1,
+                meetingTimer: 60,
+                additionalRules: '',
+                selectedRooms: {},
+                uniqueTasks: []
+            },
+            players: [],
+            currentPlayer: null,
+            roleRevealed: false,
+            meetingsUsed: 0,
+            gameEnded: false,
+            winner: null
+        };
+
+        // Track the player name for this device
+        let myPlayerName = null;
+
+        // Initialize rooms/tasks UI
+        function initializeRoomsAndTasks() {
+            const container = document.getElementById('rooms-tasks-container');
+
+            container.innerHTML = '';
+
+            console.log('ROOMS_AND_TASKS keys:', Object.keys(ROOMS_AND_TASKS));
+            console.log('Total rooms:', Object.keys(ROOMS_AND_TASKS).length);
+
+            Object.keys(ROOMS_AND_TASKS).forEach(roomName => {
+                console.log('Initializing room:', roomName);
+                // Initialize in gameState
+                gameState.settings.selectedRooms[roomName] = {
+                    enabled: true,
+                    tasks: ROOMS_AND_TASKS[roomName].map((task, i) => ({
+                        name: task,
+                        enabled: true,
+                        unique: false
+                    }))
+                };
+            });
+
+            console.log('gameState.settings.selectedRooms:', Object.keys(gameState.settings.selectedRooms));
+            renderAllRooms();
+
+            // Add "Add Room" button
+            const addRoomBtn = document.createElement('button');
+            addRoomBtn.id = 'add-room-btn';
+            addRoomBtn.className = 'btn-primary';
+            addRoomBtn.style.marginTop = '15px';
+            addRoomBtn.innerHTML = '➕ Add Room';
+            addRoomBtn.onclick = showAddRoomModal;
+            container.appendChild(addRoomBtn);
+        }
+
+        function renderAllRooms() {
+            const container = document.getElementById('rooms-tasks-container');
+
+            // Clear all room sections (but keep the add room button if it exists)
+            const sections = container.querySelectorAll('.room-section');
+            sections.forEach(section => section.remove());
+
+            console.log('renderAllRooms - Rooms to render:', Object.keys(gameState.settings.selectedRooms));
+            Object.keys(gameState.settings.selectedRooms).forEach(roomName => {
+                console.log('Rendering room:', roomName);
+                renderRoom(roomName);
+            });
+        }
+
+        function renderRoom(roomName) {
+            const container = document.getElementById('rooms-tasks-container');
+            const addRoomBtn = document.getElementById('add-room-btn');
+
+            const roomSection = document.createElement('div');
+            roomSection.className = 'room-section';
+            roomSection.id = `room-section-${roomName}`;
+
+            const roomHeader = document.createElement('div');
+            roomHeader.className = 'room-header';
+            roomHeader.innerHTML = `
+                <input type="checkbox" class="room-checkbox" id="room-${roomName}" onchange="toggleRoom('${roomName}')" ${gameState.settings.selectedRooms[roomName].enabled ? 'checked' : ''}>
+                <label for="room-${roomName}" style="font-weight: 600; font-size: 1.1rem;">${roomName}</label>
+                <button onclick="deleteRoom('${roomName}')" style="background: #ff3838; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; margin-left: auto; font-size: 0.9rem;">🗑️ Delete</button>
+            `;
+
+            const taskList = document.createElement('ul');
+            taskList.className = 'task-list';
+            taskList.id = `tasks-${roomName}`;
+
+            gameState.settings.selectedRooms[roomName].tasks.forEach((task, index) => {
+                renderTask(roomName, index, taskList);
+            });
+
+            // Add "Add Task" button
+            const addTaskBtn = document.createElement('button');
+            addTaskBtn.className = 'btn-primary';
+            addTaskBtn.style.marginTop = '10px';
+            addTaskBtn.style.marginLeft = '30px';
+            addTaskBtn.style.padding = '8px 15px';
+            addTaskBtn.style.fontSize = '0.9rem';
+            addTaskBtn.innerHTML = '➕ Add Task';
+            addTaskBtn.onclick = () => showAddTaskModal(roomName);
+
+            roomSection.appendChild(roomHeader);
+            roomSection.appendChild(taskList);
+            roomSection.appendChild(addTaskBtn);
+
+            // Insert before the "Add Room" button or at the end
+            if (addRoomBtn) {
+                container.insertBefore(roomSection, addRoomBtn);
+            } else {
+                container.appendChild(roomSection);
+            }
+        }
+
+        function renderTask(roomName, taskIndex, taskList) {
+            const task = gameState.settings.selectedRooms[roomName].tasks[taskIndex];
+            const taskItem = document.createElement('li');
+            taskItem.className = 'task-item';
+            taskItem.id = `task-item-${roomName}-${taskIndex}`;
+
+            const isRoomDisabled = !gameState.settings.selectedRooms[roomName].enabled;
+
+            taskItem.innerHTML = `
+                <div style="display: flex; align-items: flex-start; gap: 10px; flex: 1;">
+                    <input type="checkbox" id="task-${roomName}-${taskIndex}" ${task.enabled ? 'checked' : ''} ${isRoomDisabled ? 'disabled' : ''} onchange="toggleTaskEnabled('${roomName}', ${taskIndex})" class="task-enable-checkbox">
+                    <label for="task-${roomName}-${taskIndex}" style="flex: 1;" id="task-label-${roomName}-${taskIndex}">${task.name}</label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <button onclick="editTask('${roomName}', ${taskIndex})" style="background: #5eb3f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">✏️</button>
+                    <button onclick="deleteTask('${roomName}', ${taskIndex})" style="background: #ff3838; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">🗑️</button>
+                </div>
+                <div class="unique-control" style="display: none; align-items: center; gap: 5px;">
+                    <input type="checkbox" id="unique-${roomName}-${taskIndex}" ${task.unique ? 'checked' : ''} onchange="toggleTaskUnique('${roomName}', ${taskIndex})" style="width: 16px; height: 16px;">
+                    <label for="unique-${roomName}-${taskIndex}" style="font-size: 0.85rem; color: #ff9800; white-space: nowrap; cursor: pointer;">Unique</label>
+                </div>
+            `;
+
+            taskList.appendChild(taskItem);
+        }
+
+        // Room CRUD operations
+        function showAddRoomModal() {
+            const roomName = prompt('Enter room name:');
+            if (roomName && roomName.trim()) {
+                const trimmedName = roomName.trim();
+                if (gameState.settings.selectedRooms[trimmedName]) {
+                    alert('A room with this name already exists!');
+                    return;
+                }
+                addRoom(trimmedName);
+            }
+        }
+
+        function addRoom(roomName) {
+            gameState.settings.selectedRooms[roomName] = {
+                enabled: true,
+                tasks: []
+            };
+            renderRoom(roomName);
+            updateMeetingRoomDropdown();
+        }
+
+        function deleteRoom(roomName) {
+            if (confirm(`Are you sure you want to delete the room "${roomName}" and all its tasks?`)) {
+                delete gameState.settings.selectedRooms[roomName];
+                const roomSection = document.getElementById(`room-section-${roomName}`);
+                if (roomSection) {
+                    roomSection.remove();
+                }
+                updateMeetingRoomDropdown();
+            }
+        }
+
+        // Task CRUD operations
+        function showAddTaskModal(roomName) {
+            const taskName = prompt('Enter task description:');
+            if (taskName && taskName.trim()) {
+                addTask(roomName, taskName.trim());
+            }
+        }
+
+        function addTask(roomName, taskName) {
+            gameState.settings.selectedRooms[roomName].tasks.push({
+                name: taskName,
+                enabled: true,
+                unique: false
+            });
+
+            const taskList = document.getElementById(`tasks-${roomName}`);
+            const taskIndex = gameState.settings.selectedRooms[roomName].tasks.length - 1;
+            renderTask(roomName, taskIndex, taskList);
+
+            // Apply current unique visibility setting
+            toggleUniqueVisibility();
+        }
+
+        function editTask(roomName, taskIndex) {
+            const currentTask = gameState.settings.selectedRooms[roomName].tasks[taskIndex];
+            const newTaskName = prompt('Edit task description:', currentTask.name);
+
+            if (newTaskName && newTaskName.trim()) {
+                gameState.settings.selectedRooms[roomName].tasks[taskIndex].name = newTaskName.trim();
+                const label = document.getElementById(`task-label-${roomName}-${taskIndex}`);
+                if (label) {
+                    label.textContent = newTaskName.trim();
+                }
+            }
+        }
+
+        function deleteTask(roomName, taskIndex) {
+            gameState.settings.selectedRooms[roomName].tasks.splice(taskIndex, 1);
+
+            // Re-render all tasks in this room to fix indices
+            const taskList = document.getElementById(`tasks-${roomName}`);
+            taskList.innerHTML = '';
+            gameState.settings.selectedRooms[roomName].tasks.forEach((task, index) => {
+                renderTask(roomName, index, taskList);
+            });
+
+            // Apply current unique visibility setting
+            toggleUniqueVisibility();
+        }
+
+        function toggleCollapsible(element) {
+            element.classList.toggle('active');
+            const content = element.nextElementSibling;
+            content.classList.toggle('active');
+        }
+
+        function updateMeetingRoomDropdown() {
+            const meetingRoomSelect = document.getElementById('meeting-room');
+            const currentValue = meetingRoomSelect.value;
+
+            // Clear and rebuild dropdown
+            meetingRoomSelect.innerHTML = '<option value="">Select a room...</option>';
+
+            // Only add enabled rooms
+            Object.keys(gameState.settings.selectedRooms).forEach(roomName => {
+                if (gameState.settings.selectedRooms[roomName].enabled) {
+                    const option = document.createElement('option');
+                    option.value = roomName;
+                    option.textContent = roomName;
+                    meetingRoomSelect.appendChild(option);
+                }
+            });
+
+            // Restore previous selection if room is still enabled
+            if (currentValue && gameState.settings.selectedRooms[currentValue]?.enabled) {
+                meetingRoomSelect.value = currentValue;
+            }
+        }
+
+        function toggleRoom(roomName) {
+            const checkbox = document.getElementById(`room-${roomName}`);
+            const taskList = document.getElementById(`tasks-${roomName}`);
+            taskList.style.opacity = checkbox.checked ? '1' : '0.3';
+            gameState.settings.selectedRooms[roomName].enabled = checkbox.checked;
+
+            // When unchecking a room, also uncheck and disable all its tasks
+            if (!checkbox.checked) {
+                gameState.settings.selectedRooms[roomName].tasks.forEach((task, index) => {
+                    const taskCheckbox = document.getElementById(`task-${roomName}-${index}`);
+                    if (taskCheckbox) {
+                        taskCheckbox.checked = false;
+                        taskCheckbox.disabled = true;
+                        task.enabled = false;
+                    }
+                });
+            } else {
+                // When checking a room, re-enable all its tasks
+                gameState.settings.selectedRooms[roomName].tasks.forEach((task, index) => {
+                    const taskCheckbox = document.getElementById(`task-${roomName}-${index}`);
+                    if (taskCheckbox) {
+                        taskCheckbox.checked = true;
+                        taskCheckbox.disabled = false;
+                        task.enabled = true;
+                    }
+                });
+            }
+
+            // Update meeting room dropdown to reflect enabled rooms
+            updateMeetingRoomDropdown();
+        }
+
+        function toggleTaskEnabled(roomName, taskIndex) {
+            const checkbox = document.getElementById(`task-${roomName}-${taskIndex}`);
+            gameState.settings.selectedRooms[roomName].tasks[taskIndex].enabled = checkbox.checked;
+        }
+
+        function toggleTaskUnique(roomName, taskIndex) {
+            const checkbox = document.getElementById(`unique-${roomName}-${taskIndex}`);
+            gameState.settings.selectedRooms[roomName].tasks[taskIndex].unique = checkbox.checked;
+        }
+
+        function toggleUniqueVisibility() {
+            const uniqueMode = document.querySelector('input[name="unique-mode"]:checked').value;
+            const uniqueControls = document.querySelectorAll('.unique-control');
+
+            if (uniqueMode === 'manual') {
+                uniqueControls.forEach(control => {
+                    control.style.display = 'flex';
+                });
+            } else {
+                uniqueControls.forEach(control => {
+                    control.style.display = 'none';
+                });
+            }
+        }
+
+        function setupUniqueRadioListeners() {
+            const radioButtons = document.querySelectorAll('input[name="unique-mode"]');
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', toggleUniqueVisibility);
+            });
+        }
+
         function generateRoomCode() {
-            const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude similar looking chars
+            const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
             let code = '';
             for (let i = 0; i < 4; i++) {
                 code += characters.charAt(Math.floor(Math.random() * characters.length));
@@ -492,263 +1354,303 @@
             return code;
         }
 
-        // Copy room code to clipboard
-        function copyRoomCode() {
-            const roomCode = gameState.roomCode;
-            navigator.clipboard.writeText(roomCode).then(() => {
-                // Show feedback
+        function copyGameURL() {
+            const url = window.location.href;
+            navigator.clipboard.writeText(url).then(() => {
                 const feedback = document.getElementById('copy-feedback');
                 feedback.style.opacity = '1';
-                setTimeout(() => {
-                    feedback.style.opacity = '0';
-                }, 2000);
-            }).catch(err => {
-                alert('Failed to copy: ' + err);
+                setTimeout(() => feedback.style.opacity = '0', 2000);
             });
         }
 
-        // Stage 1: Create Game
-        function createGame() {
-            gameState.settings.playerCount = parseInt(document.getElementById('player-count').value);
-            gameState.settings.imposterCount = parseInt(document.getElementById('imposter-count').value);
-            gameState.settings.tasksPerPlayer = parseInt(document.getElementById('tasks-per-player').value);
+        function generateQRCode() {
+            const url = window.location.href;
+            const qrCodeImage = document.getElementById('qr-code-image');
+            // Use QR Server API to generate QR code
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}`;
+            qrCodeImage.src = qrApiUrl;
+        }
 
-            if (gameState.settings.imposterCount >= gameState.settings.playerCount) {
-                alert('Number of imposters must be less than total players!');
+        function createGame() {
+            // Gather settings
+            gameState.settings.minPlayers = parseInt(document.getElementById('min-players').value);
+            gameState.settings.maxPlayers = parseInt(document.getElementById('max-players').value);
+            gameState.settings.tasksPerPlayer = parseInt(document.getElementById('tasks-per-player').value);
+            gameState.settings.imposterCount = parseInt(document.getElementById('imposter-count').value);
+            gameState.settings.eliminationCooldown = parseInt(document.getElementById('elimination-cooldown').value);
+            gameState.settings.cooldownReduction = parseInt(document.getElementById('cooldown-reduction').value);
+            gameState.settings.meetingRoom = document.getElementById('meeting-room').value;
+            gameState.settings.meetingLimit = parseInt(document.getElementById('meeting-limit').value);
+            gameState.settings.meetingTimer = parseInt(document.getElementById('meeting-timer').value);
+            gameState.settings.additionalRules = document.getElementById('additional-rules').value;
+
+            // Validation
+            if (gameState.settings.minPlayers > gameState.settings.maxPlayers) {
+                alert('Minimum players cannot be greater than maximum players!');
                 return;
             }
 
-            // Generate and display room code
+            if (!gameState.settings.meetingRoom) {
+                alert('Please select a meeting room!');
+                return;
+            }
+
+            // Generate room code
             gameState.roomCode = generateRoomCode();
             document.getElementById('room-code').textContent = gameState.roomCode;
 
+            // Update displays
+            document.getElementById('min-players-display').textContent = gameState.settings.minPlayers;
+            document.getElementById('max-players-display').textContent = gameState.settings.maxPlayers;
+            document.getElementById('imposter-count-display').textContent = gameState.settings.imposterCount;
+
+            // Switch to waiting room
             gameState.stage = 'waiting';
             document.getElementById('setup-phase').classList.add('hidden');
             document.getElementById('waiting-room').classList.remove('hidden');
 
-            document.getElementById('total-slots').textContent = gameState.settings.playerCount;
-            document.getElementById('joined-count').textContent = '0';
-            document.getElementById('imposter-count-display').textContent = gameState.settings.imposterCount;
+            // Generate QR code for joining
+            generateQRCode();
+
+            // Update join section to show correct view
+            updateJoinSection();
         }
 
-        // Stage 2: Join Game
+        function showInstructions() {
+            document.getElementById('additional-rules-display').textContent =
+                gameState.settings.additionalRules || 'No additional rules specified.';
+            document.getElementById('instructions-modal').classList.remove('hidden');
+        }
+
+        function closeInstructions() {
+            document.getElementById('instructions-modal').classList.add('hidden');
+        }
+
+        function editSettings() {
+            if (confirm('Are you sure you want to edit settings? This will return you to the setup screen.')) {
+                document.getElementById('waiting-room').classList.add('hidden');
+                document.getElementById('setup-phase').classList.remove('hidden');
+            }
+        }
+
         function joinGame() {
             const nameInput = document.getElementById('player-name-input');
             const name = nameInput.value.trim();
 
             if (!name) {
-                alert('Please enter a player name!');
+                alert('Please enter your name!');
                 return;
             }
 
-            if (gameState.players.length >= gameState.settings.playerCount) {
-                alert('Lobby is full!');
+            if (gameState.players.length >= gameState.settings.maxPlayers) {
+                document.getElementById('room-full-message').classList.remove('hidden');
                 return;
             }
 
-            if (gameState.players.some(p => p.name === name)) {
-                alert('Player name already exists!');
+            // Case-insensitive duplicate check
+            if (gameState.players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+                alert('This name is already taken!');
                 return;
             }
 
-            gameState.players.push({ name: name });
+            gameState.players.push({
+                name: name,
+                ready: true,
+                role: null,
+                tasks: [],
+                alive: true,
+                tasksCompleted: 0
+            });
+
+            // Track this device's player
+            myPlayerName = name;
+
             nameInput.value = '';
+            updateJoinSection();
             updateLobby();
+        }
+
+        function updateJoinSection() {
+            if (myPlayerName) {
+                // Hide join form, show already joined view
+                document.getElementById('join-form').classList.add('hidden');
+                document.getElementById('already-joined').classList.remove('hidden');
+                document.getElementById('my-player-name').textContent = myPlayerName;
+            } else {
+                // Show join form, hide already joined view
+                document.getElementById('join-form').classList.remove('hidden');
+                document.getElementById('already-joined').classList.add('hidden');
+            }
         }
 
         function updateLobby() {
             const lobbyDiv = document.getElementById('lobby-players');
             lobbyDiv.innerHTML = '';
 
+            const readyPlayers = gameState.players.filter(p => p.ready);
+
             gameState.players.forEach((player, index) => {
                 const badge = document.createElement('div');
-                badge.className = 'player-badge';
+                badge.className = `player-badge ${player.ready ? 'player-ready' : ''}`;
                 badge.innerHTML = `
-                    ${index + 1}. ${player.name}
-                    <button onclick="removePlayer(${index})" style="float: right; background: #ff3838; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer;">Remove</button>
+                    <span>${player.name}</span>
+                    <div>
+                        ${player.ready ? '<span class="ready-indicator">Ready</span>' : ''}
+                    </div>
                 `;
                 lobbyDiv.appendChild(badge);
             });
 
+            document.getElementById('ready-count').textContent = readyPlayers.length;
+            document.getElementById('ready-list-count').textContent = readyPlayers.length;
             document.getElementById('joined-count').textContent = gameState.players.length;
 
             const startBtn = document.getElementById('start-game-btn');
-            if (gameState.players.length >= 3) {
+            if (readyPlayers.length >= gameState.settings.minPlayers) {
                 startBtn.disabled = false;
                 startBtn.textContent = 'Start Game';
             } else {
                 startBtn.disabled = true;
-                startBtn.textContent = `Start Game (Need at least 3 players)`;
+                startBtn.textContent = `Start Game (Waiting for minimum players to be ready)`;
             }
         }
 
-        function removePlayer(index) {
-            gameState.players.splice(index, 1);
-            updateLobby();
-        }
+        function editMyName() {
+            if (!myPlayerName) return;
 
-        // Stage 3: Start Game and Assign Roles
-        function startGame() {
-            if (gameState.players.length < 3) {
-                alert('Need at least 3 players!');
+            const playerIndex = gameState.players.findIndex(p => p.name === myPlayerName);
+            if (playerIndex === -1) return;
+
+            const player = gameState.players[playerIndex];
+            const newName = prompt('Enter new name:', player.name);
+
+            if (newName === null || newName.trim() === '') {
+                return; // User cancelled or entered empty name
+            }
+
+            const trimmedName = newName.trim();
+
+            // Check if new name is different from current name
+            if (trimmedName.toLowerCase() === player.name.toLowerCase()) {
+                return; // No change needed
+            }
+
+            // Case-insensitive duplicate check (excluding current player)
+            if (gameState.players.some((p, i) => i !== playerIndex && p.name.toLowerCase() === trimmedName.toLowerCase())) {
+                alert('This name is already taken!');
                 return;
             }
 
-            // Randomly assign imposters
+            // Update the player's name
+            player.name = trimmedName;
+            myPlayerName = trimmedName;
+            updateJoinSection();
+            updateLobby();
+        }
+
+        function leaveGame() {
+            if (!myPlayerName) return;
+
+            if (confirm('Are you sure you want to leave the game?')) {
+                const playerIndex = gameState.players.findIndex(p => p.name === myPlayerName);
+                if (playerIndex !== -1) {
+                    gameState.players.splice(playerIndex, 1);
+                }
+                myPlayerName = null;
+                updateJoinSection();
+                updateLobby();
+            }
+        }
+
+        function startGame() {
+            // Assign roles
             const shuffled = [...gameState.players].sort(() => Math.random() - 0.5);
-            const imposterIndices = shuffled.slice(0, gameState.settings.imposterCount).map(p => p.name);
+            const imposterNames = shuffled.slice(0, gameState.settings.imposterCount).map(p => p.name);
 
-            // Assign roles and tasks
-            gameState.players = gameState.players.map(player => ({
-                name: player.name,
-                role: imposterIndices.includes(player.name) ? 'imposter' : 'crewmate',
-                tasks: imposterIndices.includes(player.name) ? [] : generateTasks(gameState.settings.tasksPerPlayer),
-                completedTasks: []
-            }));
-
-            gameState.stage = 'playing';
-
-            // Setup player selector
-            const select = document.getElementById('player-select');
-            select.innerHTML = '<option value="host">Host View (All Players)</option>';
+            // Assign tasks
             gameState.players.forEach(player => {
-                const option = document.createElement('option');
-                option.value = player.name;
-                option.textContent = player.name;
-                select.appendChild(option);
+                player.role = imposterNames.includes(player.name) ? 'imposter' : 'crewmate';
+                player.tasks = []; // TODO: Assign tasks from selected rooms
+                player.alive = true;
+                player.tasksCompleted = 0;
             });
 
+            // Set current player based on this device's player (if joined)
+            if (myPlayerName) {
+                gameState.currentPlayer = myPlayerName;
+            } else {
+                // Default to first player if not joined (for host view)
+                gameState.currentPlayer = gameState.players[0]?.name || null;
+            }
+
+            // Switch to game phase
+            gameState.stage = 'playing';
             document.getElementById('waiting-room').classList.add('hidden');
             document.getElementById('game-phase').classList.remove('hidden');
 
-            renderHostView();
+            displayGameplay();
         }
 
-        function generateTasks(count) {
-            const shuffled = [...availableTasks].sort(() => Math.random() - 0.5);
-            return shuffled.slice(0, count);
-        }
-
-        function renderHostView() {
-            const container = document.getElementById('all-players-list');
-            container.innerHTML = '';
-
-            gameState.players.forEach((player, playerIndex) => {
-                const card = document.createElement('div');
-                card.style.cssText = 'background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; margin-bottom: 15px;';
-
-                let tasksHtml = '';
-                if (player.role === 'crewmate') {
-                    tasksHtml = `
-                        <ul class="task-list">
-                            ${player.tasks.map((task, taskIndex) => `
-                                <li class="task-item">
-                                    <input type="checkbox"
-                                           id="task-${playerIndex}-${taskIndex}"
-                                           onchange="toggleTask(${playerIndex}, ${taskIndex})">
-                                    <label for="task-${playerIndex}-${taskIndex}">${task}</label>
-                                </li>
-                            `).join('')}
-                        </ul>
-                    `;
-                } else {
-                    tasksHtml = '<p style="color: #ff3838; font-style: italic; margin-top: 15px;">Sabotage and eliminate crewmates!</p>';
-                }
-
-                card.innerHTML = `
-                    <h3 style="font-size: 1.5rem; margin-bottom: 10px;">${player.name}</h3>
-                    <span class="player-role role-${player.role}">
-                        ${player.role === 'imposter' ? '☠️ IMPOSTER' : '👤 CREWMATE'}
-                    </span>
-                    ${tasksHtml}
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        function switchPlayerView() {
-            const selectedPlayer = document.getElementById('player-select').value;
-
-            if (selectedPlayer === 'host') {
-                document.getElementById('host-view').classList.remove('hidden');
-                document.getElementById('player-view').classList.add('hidden');
-                renderHostView();
-            } else {
-                document.getElementById('host-view').classList.add('hidden');
-                document.getElementById('player-view').classList.remove('hidden');
-                renderPlayerView(selectedPlayer);
-            }
-        }
-
-        function renderPlayerView(playerName) {
-            const player = gameState.players.find(p => p.name === playerName);
+        function displayGameplay() {
+            const player = gameState.players.find(p => p.name === gameState.currentPlayer);
             if (!player) return;
 
-            document.getElementById('current-player-name').textContent = player.name;
+            document.getElementById('role-text').textContent =
+                player.role === 'imposter' ? '☠️ IMPOSTER' : '👤 CREWMATE';
+            document.getElementById('role-text').className =
+                player.role === 'imposter' ? 'role-revealed role-imposter' : 'role-revealed role-crewmate';
 
-            const roleSpan = document.getElementById('current-player-role');
-            roleSpan.className = `player-role role-${player.role}`;
-            roleSpan.textContent = player.role === 'imposter' ? '☠️ IMPOSTER' : '👤 CREWMATE';
+            // Show/hide imposter actions
+            if (player.role === 'imposter') {
+                document.getElementById('imposter-actions').classList.remove('hidden');
+            }
 
-            const tasksContainer = document.getElementById('current-player-tasks');
+            document.getElementById('meetings-remaining').textContent =
+                gameState.settings.meetingLimit - gameState.meetingsUsed;
+        }
 
-            if (player.role === 'crewmate') {
-                const playerIndex = gameState.players.findIndex(p => p.name === playerName);
-                tasksContainer.innerHTML = `
-                    <h3 style="margin-bottom: 15px; color: #5eb3f6;">Your Tasks:</h3>
-                    <ul class="task-list">
-                        ${player.tasks.map((task, taskIndex) => `
-                            <li class="task-item">
-                                <input type="checkbox"
-                                       id="task-view-${playerIndex}-${taskIndex}"
-                                       onchange="toggleTask(${playerIndex}, ${taskIndex})">
-                                <label for="task-view-${playerIndex}-${taskIndex}">${task}</label>
-                            </li>
-                        `).join('')}
-                    </ul>
-                `;
+        function toggleRole() {
+            const hidden = document.getElementById('role-hidden');
+            const revealed = document.getElementById('role-revealed');
+            const btn = document.getElementById('toggle-role-btn');
+
+            if (hidden.classList.contains('hidden')) {
+                hidden.classList.remove('hidden');
+                revealed.classList.add('hidden');
+                btn.textContent = '👁️ Reveal Role';
             } else {
-                tasksContainer.innerHTML = `
-                    <div style="text-align: center; padding: 30px; background: rgba(255, 56, 56, 0.1); border-radius: 10px;">
-                        <h3 style="color: #ff3838; font-size: 1.5rem; margin-bottom: 15px;">Your Mission</h3>
-                        <p style="font-size: 1.1rem;">Sabotage and eliminate crewmates without being discovered!</p>
-                    </div>
-                `;
+                hidden.classList.add('hidden');
+                revealed.classList.remove('hidden');
+                btn.textContent = '🙈 Hide Role';
             }
         }
 
-        function toggleTask(playerIndex, taskIndex) {
-            const task = gameState.players[playerIndex].tasks[taskIndex];
-            const checkbox1 = document.getElementById(`task-${playerIndex}-${taskIndex}`);
-            const checkbox2 = document.getElementById(`task-view-${playerIndex}-${taskIndex}`);
+        function eliminatePlayer() {
+            const player = gameState.players.find(p => p.name === gameState.currentPlayer);
+            if (player) {
+                player.isAlive = false;
 
-            const isChecked = checkbox1?.checked || checkbox2?.checked || false;
+                // Generate QR code for eliminated player
+                const eliminatedMessage = `ELIMINATED: ${player.name} - Room: ${gameState.roomCode}`;
+                const qrCodeImage = document.getElementById('eliminated-qr-code');
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(eliminatedMessage)}`;
+                qrCodeImage.src = qrApiUrl;
 
-            if (isChecked) {
-                if (!gameState.players[playerIndex].completedTasks.includes(task)) {
-                    gameState.players[playerIndex].completedTasks.push(task);
-                }
-            } else {
-                const completedIndex = gameState.players[playerIndex].completedTasks.indexOf(task);
-                if (completedIndex > -1) {
-                    gameState.players[playerIndex].completedTasks.splice(completedIndex, 1);
-                }
+                // Show eliminated modal
+                document.getElementById('eliminated-modal').classList.remove('hidden');
             }
-
-            // Sync both checkboxes
-            if (checkbox1) checkbox1.checked = isChecked;
-            if (checkbox2) checkbox2.checked = isChecked;
         }
 
-        // Stage 4: Emergency Meeting
-        function callEmergencyMeeting() {
-            const overlay = document.getElementById('meeting-overlay');
-            overlay.classList.remove('hidden');
-
-            if ('vibrate' in navigator) {
-                navigator.vibrate([200, 100, 200, 100, 200, 100, 200]);
+        function callMeeting() {
+            if (gameState.meetingsUsed >= gameState.settings.meetingLimit) {
+                alert('No emergency meetings remaining!');
+                return;
             }
 
+            document.getElementById('meeting-location-alert').textContent = gameState.settings.meetingRoom;
+            document.getElementById('meeting-overlay').classList.remove('hidden');
+
+            // Play alarm sound (from previous implementation)
             playAlarmSound();
         }
 
@@ -756,52 +1658,185 @@
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             let count = 0;
             const interval = setInterval(() => {
-                if (count >= 10 || document.getElementById('meeting-overlay').classList.contains('hidden')) {
+                if (count >= 5) {
                     clearInterval(interval);
                     return;
                 }
-
                 const oscillator = audioContext.createOscillator();
                 const gainNode = audioContext.createGain();
-
                 oscillator.connect(gainNode);
                 gainNode.connect(audioContext.destination);
-
                 oscillator.frequency.value = 800;
                 oscillator.type = 'square';
-
                 gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-
                 oscillator.start(audioContext.currentTime);
                 oscillator.stop(audioContext.currentTime + 0.3);
-
                 count++;
             }, 400);
         }
 
-        function dismissMeeting() {
+        function acknowledgeMeeting() {
             document.getElementById('meeting-overlay').classList.add('hidden');
+            document.getElementById('game-phase').classList.add('hidden');
+            document.getElementById('meeting-phase').classList.remove('hidden');
         }
 
-        function endGame() {
-            if (confirm('Are you sure you want to end the game and return to setup?')) {
-                gameState = {
-                    stage: 'setup',
-                    settings: {
-                        playerCount: 5,
-                        imposterCount: 1,
-                        tasksPerPlayer: 3
-                    },
-                    roomCode: '',
-                    players: [],
-                    currentView: 'host'
-                };
+        function selectMeetingType(type) {
+            document.getElementById('meeting-type-selection').classList.add('hidden');
 
-                document.getElementById('game-phase').classList.add('hidden');
-                document.getElementById('setup-phase').classList.remove('hidden');
+            if (type === 'report') {
+                document.getElementById('report-selection').classList.remove('hidden');
+                // Populate eliminated players list
+                const list = document.getElementById('eliminated-players-list');
+                list.innerHTML = '';
+                gameState.players.filter(p => !p.alive).forEach(player => {
+                    const option = document.createElement('div');
+                    option.className = 'vote-option';
+                    option.innerHTML = `
+                        <input type="checkbox" value="${player.name}">
+                        <label>${player.name}</label>
+                    `;
+                    list.appendChild(option);
+                });
+            } else {
+                gameState.meetingsUsed++;
+                document.getElementById('discussion-phase').classList.remove('hidden');
+                startDiscussionTimer();
             }
         }
+
+        function confirmReport() {
+            document.getElementById('report-selection').classList.add('hidden');
+            document.getElementById('discussion-phase').classList.remove('hidden');
+            startDiscussionTimer();
+        }
+
+        function startDiscussionTimer() {
+            let timeLeft = gameState.settings.meetingTimer;
+            document.getElementById('discussion-timer').textContent = timeLeft;
+
+            const interval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('discussion-timer').textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    startVoting();
+                }
+            }, 1000);
+        }
+
+        function startVoting() {
+            document.getElementById('discussion-phase').classList.add('hidden');
+            document.getElementById('voting-phase').classList.remove('hidden');
+
+            // Populate vote options
+            const voteOptions = document.getElementById('vote-options');
+            voteOptions.innerHTML = '';
+
+            gameState.players.filter(p => p.alive).forEach(player => {
+                const option = document.createElement('div');
+                option.className = 'vote-option';
+                option.onclick = () => selectVote(player.name, option);
+                option.innerHTML = `<strong>${player.name}</strong>`;
+                voteOptions.appendChild(option);
+            });
+
+            // Add skip option
+            const skipOption = document.createElement('div');
+            skipOption.className = 'vote-option';
+            skipOption.onclick = () => selectVote('skip', skipOption);
+            skipOption.innerHTML = '<strong>Skip</strong>';
+            voteOptions.appendChild(skipOption);
+
+            // Start vote timer
+            let timeLeft = gameState.settings.meetingTimer;
+            document.getElementById('vote-timer').textContent = timeLeft;
+
+            const interval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('vote-timer').textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    submitVote();
+                }
+            }, 1000);
+        }
+
+        let selectedVote = null;
+        function selectVote(playerName, element) {
+            document.querySelectorAll('.vote-option').forEach(opt => opt.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedVote = playerName;
+            document.getElementById('submit-vote-btn').disabled = false;
+        }
+
+        function submitVote() {
+            document.getElementById('voting-phase').classList.add('hidden');
+            document.getElementById('vote-results').classList.remove('hidden');
+
+            // Placeholder vote results
+            document.getElementById('results-display').innerHTML = `
+                <div class="vote-results">
+                    <div>Player 1: <strong>3 votes</strong></div>
+                    <div class="vote-bar"><div class="vote-bar-fill" style="width: 60%"></div></div>
+                </div>
+                <div class="vote-results">
+                    <div>Player 2: <strong>2 votes</strong></div>
+                    <div class="vote-bar"><div class="vote-bar-fill" style="width: 40%"></div></div>
+                </div>
+            `;
+
+            document.getElementById('ejected-player-text').textContent =
+                'Player 1 was ejected. They were an Imposter.';
+        }
+
+        function resumeGame() {
+            document.getElementById('meeting-phase').classList.add('hidden');
+            document.getElementById('game-phase').classList.remove('hidden');
+        }
+
+        function closeEliminatedModal() {
+            document.getElementById('eliminated-modal').classList.add('hidden');
+        }
+
+        function closeVictoryScreen() {
+            document.getElementById('victory-screen').classList.add('hidden');
+        }
+
+        function closeDefeatScreen() {
+            document.getElementById('defeat-screen').classList.add('hidden');
+        }
+
+        function newGameSameSettings() {
+            // Reset game state but keep settings
+            gameState.players = [];
+            gameState.meetingsUsed = 0;
+            gameState.gameEnded = false;
+
+            document.getElementById('game-end').classList.add('hidden');
+            document.getElementById('waiting-room').classList.remove('hidden');
+            updateLobby();
+        }
+
+        function newGameNewSettings() {
+            location.reload();
+        }
+
+        function endSession() {
+            if (confirm('Are you sure you want to end this session?')) {
+                location.reload();
+            }
+        }
+
+        // Initialize on load
+        window.onload = () => {
+            initializeRoomsAndTasks();
+            updateMeetingRoomDropdown();
+            setupUniqueRadioListeners();
+        };
     </script>
 </body>
 </html>
