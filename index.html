@@ -829,7 +829,7 @@
             <!-- Emergency Meeting Button -->
             <div class="card">
                 <button class="btn-danger btn-block" onclick="callMeeting()" style="font-size: 1.5rem; padding: 20px;">
-                    🚨 CALL MEETING 🚨
+                    CALL MEETING
                 </button>
                 <p style="text-align: center; color: #a0a0a0; margin-top: 10px;">
                     Emergency meetings remaining: <span id="meetings-remaining">1</span>
@@ -839,18 +839,6 @@
 
         <!-- STAGE 4: MEETING -->
         <div id="meeting-phase" class="hidden">
-            <!-- Meeting Type Selection -->
-            <div class="card" id="meeting-type-selection">
-                <h2>Meeting Called</h2>
-                <p style="color: #a0a0a0; margin-bottom: 20px;">What type of meeting is this?</p>
-                <button class="btn-danger btn-block" onclick="selectMeetingType('report')">
-                    📋 Report Body
-                </button>
-                <button class="btn-warning btn-block" onclick="selectMeetingType('emergency')">
-                    🚨 Emergency Meeting
-                </button>
-            </div>
-
             <!-- Report Body Selection -->
             <div class="card hidden" id="report-selection">
                 <h2>Report Body</h2>
@@ -1006,8 +994,20 @@
         <!-- Meeting Alert Overlay -->
         <div id="meeting-overlay" class="meeting-overlay hidden">
             <div class="meeting-content">
-                <h2>🚨 MEETING CALLED 🚨</h2>
+                <h2>MEETING CALLED</h2>
                 <p style="font-size: 1.5rem; margin-bottom: 30px;">Return to: <span id="meeting-location-alert">Meeting Room</span></p>
+
+                <!-- Meeting type selection - only shown to the player who called the meeting -->
+                <div id="meeting-caller-controls" class="hidden" style="margin-bottom: 20px;">
+                    <p style="color: #666; margin-bottom: 15px;">What type of meeting is this?</p>
+                    <button class="btn-secondary btn-block" onclick="selectMeetingType('report')" style="margin-bottom: 10px;">
+                        Report
+                    </button>
+                    <button class="btn-primary btn-block" onclick="selectMeetingType('emergency')">
+                        Emergency Meeting
+                    </button>
+                </div>
+
                 <button class="btn-primary" style="font-size: 1.2rem; padding: 15px 40px;" onclick="acknowledgeMeeting()">
                     I'm Here
                 </button>
@@ -1108,6 +1108,8 @@
             currentPlayer: null,
             roleRevealed: false,
             meetingsUsed: 0,
+            meetingCaller: null,
+            meetingType: null,
             gameEnded: false,
             winner: null
         };
@@ -1336,7 +1338,17 @@
                             gameState.hostName = newData.host_name;
                         }
                         gameState.stage = newData.stage;
-                        gameState.settings = newData.settings;
+
+                        // Only update settings if they exist (prevent overwriting valid settings with null/undefined)
+                        if (newData.settings !== null && newData.settings !== undefined) {
+                            gameState.settings = newData.settings;
+
+                            // Sync meetingType from settings if it exists
+                            if (newData.settings.meetingType) {
+                                gameState.meetingType = newData.settings.meetingType;
+                            }
+                        }
+
                         gameState.meetingsUsed = newData.meetings_used;
                         gameState.gameEnded = newData.game_ended;
                         gameState.winner = newData.winner;
@@ -1525,6 +1537,55 @@
                 document.getElementById('waiting-room').classList.add('hidden');
                 document.getElementById('game-phase').classList.remove('hidden');
                 displayGameplay();
+            } else if (gameState.stage === 'meeting') {
+                // Show meeting alert for all players
+                console.log('Meeting stage detected, showing alert');
+                document.getElementById('meeting-location-alert').textContent = gameState.settings.meetingRoom;
+                document.getElementById('meeting-overlay').classList.remove('hidden');
+
+                // Only show meeting controls for the player who called the meeting
+                if (myPlayerName === gameState.meetingCaller) {
+                    document.getElementById('meeting-caller-controls').classList.remove('hidden');
+                } else {
+                    document.getElementById('meeting-caller-controls').classList.add('hidden');
+                }
+
+                // Play alarm sound for everyone
+                playAlarmSound();
+            } else if (gameState.stage === 'ended') {
+                // Game has ended - show end screen
+                console.log('Game ended stage detected');
+
+                // Hide other phases
+                document.getElementById('game-phase').classList.add('hidden');
+                document.getElementById('meeting-phase').classList.add('hidden');
+                document.getElementById('waiting-room').classList.add('hidden');
+
+                // Show game end screen
+                document.getElementById('game-end').classList.remove('hidden');
+
+                // Determine if this player won or lost
+                const player = gameState.players.find(p => p.name === myPlayerName);
+                const playerRole = player ? player.role : null;
+
+                // Crewmates win if winner is 'crewmates', imposters win if winner is 'imposters'
+                const didPlayerWin = (playerRole === 'crewmate' && gameState.winner === 'crewmates') ||
+                                     (playerRole === 'imposter' && gameState.winner === 'imposters');
+
+                // Show appropriate screen
+                if (didPlayerWin) {
+                    document.getElementById('victory-screen').classList.remove('hidden');
+                    document.getElementById('defeat-screen').classList.add('hidden');
+                    if (gameState.settings && gameState.settings.meetingRoom) {
+                        document.getElementById('meeting-location-victory').textContent = gameState.settings.meetingRoom;
+                    }
+                } else {
+                    document.getElementById('victory-screen').classList.add('hidden');
+                    document.getElementById('defeat-screen').classList.remove('hidden');
+                    if (gameState.settings && gameState.settings.meetingRoom) {
+                        document.getElementById('meeting-location-defeat').textContent = gameState.settings.meetingRoom;
+                    }
+                }
             }
         }
 
@@ -1931,6 +1992,8 @@
                 currentPlayer: null,
                 roleRevealed: false,
                 meetingsUsed: 0,
+                meetingCaller: null,
+                meetingType: null,
                 gameEnded: false,
                 winner: null
             };
@@ -2155,6 +2218,12 @@
             // Safety check - only skip if we're not in waiting stage (prevents errors during menu transition)
             if (gameState.stage !== 'waiting') {
                 console.log('updateLobby called but not in waiting stage, ignoring');
+                return;
+            }
+
+            // Additional safety check - ensure settings exist
+            if (!gameState.settings || !gameState.settings.minPlayers) {
+                console.log('updateLobby called but settings not initialized, ignoring');
                 return;
             }
 
@@ -2543,16 +2612,46 @@
             }
         }
 
-        function callMeeting() {
+        async function callMeeting() {
             if (gameState.meetingsUsed >= gameState.settings.meetingLimit) {
                 alert('No emergency meetings remaining!');
                 return;
             }
 
+            // Set this player as the meeting caller
+            gameState.meetingCaller = myPlayerName;
+            console.log('Meeting called by:', myPlayerName);
+
+            // Update database to trigger meeting for all players
+            if (supabaseClient && currentGameId) {
+                try {
+                    const { error } = await supabaseClient
+                        .from('games')
+                        .update({
+                            stage: 'meeting',
+                            meetings_used: gameState.meetingsUsed,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', currentGameId);
+
+                    if (error) {
+                        console.error('Error updating meeting state:', error);
+                    } else {
+                        console.log('Meeting state updated in database');
+                    }
+                } catch (err) {
+                    console.error('Error calling meeting:', err);
+                }
+            }
+
+            // Show the alert for this player
             document.getElementById('meeting-location-alert').textContent = gameState.settings.meetingRoom;
             document.getElementById('meeting-overlay').classList.remove('hidden');
 
-            // Play alarm sound (from previous implementation)
+            // Show meeting controls only for the caller
+            document.getElementById('meeting-caller-controls').classList.remove('hidden');
+
+            // Play alarm sound
             playAlarmSound();
         }
 
@@ -2582,12 +2681,9 @@
             document.getElementById('meeting-overlay').classList.add('hidden');
             document.getElementById('game-phase').classList.add('hidden');
             document.getElementById('meeting-phase').classList.remove('hidden');
-        }
 
-        function selectMeetingType(type) {
-            document.getElementById('meeting-type-selection').classList.add('hidden');
-
-            if (type === 'report') {
+            // Show appropriate meeting phase based on type
+            if (gameState.meetingType === 'report') {
                 document.getElementById('report-selection').classList.remove('hidden');
                 // Populate eliminated players list
                 const list = document.getElementById('eliminated-players-list');
@@ -2601,10 +2697,31 @@
                     `;
                     list.appendChild(option);
                 });
-            } else {
+            } else if (gameState.meetingType === 'emergency') {
                 gameState.meetingsUsed++;
                 document.getElementById('discussion-phase').classList.remove('hidden');
                 startDiscussionTimer();
+
+                // Update meetings used in database
+                if (supabaseClient && currentGameId) {
+                    updateGameInDB();
+                }
+            }
+        }
+
+        function selectMeetingType(type) {
+            // Store the meeting type (both in gameState and settings for DB sync)
+            gameState.meetingType = type;
+            gameState.settings.meetingType = type;
+
+            // Hide the caller controls on the overlay
+            document.getElementById('meeting-caller-controls').classList.add('hidden');
+
+            console.log('Meeting type selected:', type);
+
+            // Update the database so all players know the meeting type
+            if (supabaseClient && currentGameId) {
+                updateGameInDB();
             }
         }
 
@@ -2702,6 +2819,46 @@
 
         function closeEliminatedModal() {
             document.getElementById('eliminated-modal').classList.add('hidden');
+        }
+
+        function endGame(winner, message) {
+            console.log('Game ending - Winner:', winner, 'Message:', message);
+
+            // Update game state
+            gameState.gameEnded = true;
+            gameState.winner = winner;
+            gameState.stage = 'ended';
+
+            // Update database
+            if (supabaseClient && currentGameId) {
+                updateGameInDB();
+            }
+
+            // Hide game phase
+            document.getElementById('game-phase').classList.add('hidden');
+            document.getElementById('meeting-phase').classList.add('hidden');
+
+            // Show game end screen
+            document.getElementById('game-end').classList.remove('hidden');
+
+            // Determine if this player won or lost
+            const player = gameState.players.find(p => p.name === myPlayerName);
+            const playerRole = player ? player.role : null;
+
+            // Crewmates win if winner is 'crewmates', imposters win if winner is 'imposters'
+            const didPlayerWin = (playerRole === 'crewmate' && winner === 'crewmates') ||
+                                 (playerRole === 'imposter' && winner === 'imposters');
+
+            // Show appropriate screen
+            if (didPlayerWin) {
+                document.getElementById('victory-screen').classList.remove('hidden');
+                document.getElementById('defeat-screen').classList.add('hidden');
+                document.getElementById('meeting-location-victory').textContent = gameState.settings.meetingRoom;
+            } else {
+                document.getElementById('victory-screen').classList.add('hidden');
+                document.getElementById('defeat-screen').classList.remove('hidden');
+                document.getElementById('meeting-location-defeat').textContent = gameState.settings.meetingRoom;
+            }
         }
 
         function closeVictoryScreen() {
