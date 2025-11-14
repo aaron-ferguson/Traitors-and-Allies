@@ -162,6 +162,22 @@
             box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);
         }
 
+        /* Disabled button styling */
+        button:disabled,
+        button[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed !important;
+            background: #cccccc !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        button:disabled:hover,
+        button[disabled]:hover {
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
         .btn-warning {
             background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
             color: #fff;
@@ -1921,23 +1937,32 @@
             document.getElementById('ready-list-count').textContent = readyPlayers.length;
             document.getElementById('joined-count').textContent = gameState.players.length;
 
+            // Update start button - must be host AND have enough players
             const startBtn = document.getElementById('start-game-btn');
-            if (readyPlayers.length >= gameState.settings.minPlayers) {
-                startBtn.disabled = false;
-                startBtn.textContent = 'Start Game';
-            } else {
+            const enoughPlayers = readyPlayers.length >= gameState.settings.minPlayers;
+            const userIsHost = isHost();
+
+            if (!userIsHost) {
+                // Non-host: always disabled
+                startBtn.disabled = true;
+                startBtn.textContent = 'Only host can start the game';
+            } else if (!enoughPlayers) {
+                // Host but not enough players: disabled
                 startBtn.disabled = true;
                 startBtn.textContent = `Start Game (Waiting for minimum players to be ready)`;
+            } else {
+                // Host with enough players: enabled
+                startBtn.disabled = false;
+                startBtn.textContent = 'Start Game';
             }
 
-            // Update host controls after updating lobby
+            // Update other host controls
             updateHostControls();
         }
 
         function updateHostControls() {
             // Show/hide Edit Settings button based on host status
             const editSettingsBtn = document.getElementById('edit-settings-btn');
-            const startGameBtn = document.getElementById('start-game-btn');
 
             if (editSettingsBtn) {
                 if (isHost()) {
@@ -1947,13 +1972,7 @@
                 }
             }
 
-            // Only host can start the game
-            if (startGameBtn) {
-                if (!isHost()) {
-                    startGameBtn.disabled = true;
-                    startGameBtn.textContent = 'Only host can start the game';
-                }
-            }
+            // Note: Start button is handled in updateLobby() to coordinate with player count
         }
 
         async function kickPlayer(playerName) {
