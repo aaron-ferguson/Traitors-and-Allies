@@ -183,6 +183,16 @@
             color: #fff;
         }
 
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(108, 117, 125, 0.4);
+        }
+
         .btn-block {
             width: 100%;
             margin-top: 10px;
@@ -582,6 +592,35 @@
             <h1>Among Us IRL</h1>
             <p class="subtitle">Minigames and betrayal in your own backyard!</p>
         </header>
+
+        <!-- MAIN MENU -->
+        <div id="main-menu">
+            <div class="card" style="text-align: center; max-width: 500px; margin: 0 auto;">
+                <button class="btn-primary btn-block" onclick="showCreateGame()" style="margin-bottom: 15px; font-size: 1.2rem; padding: 20px;">
+                    Create New Game
+                </button>
+
+                <button class="btn-secondary btn-block" onclick="showJoinGame()" style="margin-bottom: 15px; font-size: 1.2rem; padding: 20px;">
+                    Join Existing Game
+                </button>
+
+                <button class="btn-secondary btn-block" onclick="showInstructions()" style="font-size: 1.2rem; padding: 20px;">
+                    Game Instructions
+                </button>
+
+                <!-- Join Game Input (hidden by default) -->
+                <div id="join-game-section" class="hidden" style="margin-top: 30px; padding-top: 30px; border-top: 2px solid rgba(255,255,255,0.1);">
+                    <h3>Enter Room Code</h3>
+                    <input type="text" id="menu-room-code-input" placeholder="Enter 4-letter code"
+                           style="width: 100%; padding: 15px; font-size: 1.2rem; text-align: center; text-transform: uppercase; letter-spacing: 5px; margin-bottom: 15px;"
+                           maxlength="4">
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-success" onclick="joinGameFromMenu()" style="flex: 1;">Join Game</button>
+                        <button class="btn-secondary" onclick="hideJoinGame()" style="flex: 1;">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- STAGE 1: GAME SETUP -->
         <div id="setup-phase">
@@ -1250,9 +1289,13 @@
         }
 
         async function removePlayerFromDB(playerName) {
-            if (!supabaseClient || !currentGameId) return;
+            if (!supabaseClient || !currentGameId) {
+                console.warn('Cannot remove player from DB - supabaseClient or currentGameId missing');
+                return;
+            }
 
             try {
+                console.log('Deleting player from DB:', playerName, 'game_id:', currentGameId);
                 const { error } = await supabaseClient
                     .from('players')
                     .delete()
@@ -1260,6 +1303,7 @@
                     .eq('name', playerName);
 
                 if (error) throw error;
+                console.log('Player deleted from DB successfully');
             } catch (error) {
                 console.error('Error removing player:', error);
             }
@@ -1336,6 +1380,48 @@
             console.log('Subscribed to player updates');
         }
 
+        let playerExistenceInterval = null;
+
+        function startPlayerExistenceCheck() {
+            // Clear any existing interval
+            if (playerExistenceInterval) {
+                clearInterval(playerExistenceInterval);
+            }
+
+            // Wait 3 seconds before starting polling to ensure player is added to DB first
+            setTimeout(() => {
+                // Check every 2 seconds if this player still exists in the database
+                playerExistenceInterval = setInterval(async () => {
+                    if (!myPlayerName || !supabaseClient || !currentGameId) {
+                        clearInterval(playerExistenceInterval);
+                        return;
+                    }
+
+                    try {
+                        const { data, error } = await supabaseClient
+                            .from('players')
+                            .select('name')
+                            .eq('game_id', currentGameId)
+                            .eq('name', myPlayerName)
+                            .single();
+
+                        if (error || !data) {
+                            // Player no longer exists in database - we were kicked!
+                            console.log('Player existence check: Player not found in DB - we were kicked!');
+                            clearInterval(playerExistenceInterval);
+                            alert('You have been removed from the game by the host.');
+                            returnToMenu();
+                        }
+                    } catch (err) {
+                        console.log('Player existence check error (likely kicked):', err);
+                        clearInterval(playerExistenceInterval);
+                        alert('You have been removed from the game by the host.');
+                        returnToMenu();
+                    }
+                }, 2000);
+            }, 3000);
+        }
+
         function handlePlayerChange(payload) {
             const { eventType, new: newData, old: oldData } = payload;
 
@@ -1370,11 +1456,30 @@
                     updateLobby();
                 }
             } else if (eventType === 'DELETE') {
-                // Player left
+                // Player left or was kicked
+                console.log('DELETE event received for player:', oldData.name);
+                console.log('Current myPlayerName:', myPlayerName);
+
                 const playerIndex = gameState.players.findIndex(p => p.name === oldData.name);
                 if (playerIndex !== -1) {
                     gameState.players.splice(playerIndex, 1);
-                    updateLobby();
+
+                    // Check if the deleted player is this device's player
+                    if (oldData.name === myPlayerName) {
+                        console.log('This device was kicked! Redirecting to menu...');
+
+                        // This player was kicked - notify and redirect
+                        alert('You have been removed from the game by the host.');
+
+                        // Return to menu
+                        returnToMenu();
+                    } else {
+                        console.log('Someone else was kicked, updating lobby');
+                        // Someone else left/was kicked - just update lobby
+                        updateLobby();
+                    }
+                } else {
+                    console.log('Player not found in local players array');
                 }
             }
         }
@@ -1387,6 +1492,11 @@
                 document.getElementById('game-phase').classList.add('hidden');
                 updateLobby();
             } else if (gameState.stage === 'playing') {
+                // Set current player if not already set (for non-host players joining mid-game)
+                if (!gameState.currentPlayer && myPlayerName) {
+                    gameState.currentPlayer = myPlayerName;
+                }
+
                 document.getElementById('waiting-room').classList.add('hidden');
                 document.getElementById('game-phase').classList.remove('hidden');
                 displayGameplay();
@@ -1703,6 +1813,115 @@
             });
         }
 
+        // ==================== MENU NAVIGATION ====================
+
+        function showCreateGame() {
+            // Hide menu, show setup phase
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('setup-phase').classList.remove('hidden');
+        }
+
+        function showJoinGame() {
+            // Show the join game input section on the menu
+            document.getElementById('join-game-section').classList.remove('hidden');
+        }
+
+        function hideJoinGame() {
+            // Hide the join game input section
+            document.getElementById('join-game-section').classList.add('hidden');
+            document.getElementById('menu-room-code-input').value = '';
+        }
+
+        async function joinGameFromMenu() {
+            const roomCodeInput = document.getElementById('menu-room-code-input');
+            const roomCode = roomCodeInput.value.trim().toUpperCase();
+
+            if (roomCode.length !== 4) {
+                alert('Please enter a valid 4-letter room code.');
+                return;
+            }
+
+            if (!supabaseClient) {
+                alert('Online multiplayer not available. Please configure Supabase.');
+                return;
+            }
+
+            // Try to join the game from database
+            const gameData = await joinGameFromDB(roomCode);
+
+            if (gameData) {
+                // Successfully found game - hide menu, show waiting room
+                document.getElementById('main-menu').classList.add('hidden');
+                document.getElementById('setup-phase').classList.add('hidden');
+                document.getElementById('waiting-room').classList.remove('hidden');
+                document.getElementById('room-code').textContent = roomCode;
+
+                // Update displays
+                document.getElementById('min-players-display').textContent = gameState.settings.minPlayers;
+                document.getElementById('max-players-display').textContent = gameState.settings.maxPlayers;
+                document.getElementById('imposter-count-display').textContent = gameState.settings.imposterCount;
+
+                // Generate QR code
+                generateQRCode();
+                updateJoinSection();
+                updateLobby();
+            } else {
+                alert(`Game with room code "${roomCode}" not found. Please check the code and try again.`);
+            }
+        }
+
+        function returnToMenu() {
+            // Stop player existence polling
+            if (playerExistenceInterval) {
+                clearInterval(playerExistenceInterval);
+                playerExistenceInterval = null;
+            }
+
+            // Unsubscribe from channels FIRST to prevent callbacks from firing
+            unsubscribeFromChannels();
+
+            // Clear player state
+            myPlayerName = null;
+            isGameCreator = false;
+
+            // Clear game state
+            gameState = {
+                stage: 'setup',
+                roomCode: '',
+                hostName: null,
+                settings: {
+                    minPlayers: 4,
+                    maxPlayers: 10,
+                    tasksPerPlayer: 3,
+                    imposterCount: 1,
+                    eliminationCooldown: 30,
+                    cooldownReduction: 5,
+                    meetingRoom: '',
+                    meetingLimit: 3,
+                    meetingTimer: 60,
+                    additionalRules: '',
+                    selectedRooms: {}
+                },
+                players: [],
+                currentPlayer: null,
+                roleRevealed: false,
+                meetingsUsed: 0,
+                gameEnded: false,
+                winner: null
+            };
+
+            // Hide all phases, show menu
+            document.getElementById('setup-phase').classList.add('hidden');
+            document.getElementById('waiting-room').classList.add('hidden');
+            document.getElementById('game-phase').classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
+
+            // Hide join section
+            hideJoinGame();
+        }
+
+        // =================================================================
+
         function generateRoomCode() {
             const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
             let code = '';
@@ -1836,6 +2055,9 @@
                 if (supabaseClient && currentGameId) {
                     await updatePlayerInDB(existingPlayer.name, { last_seen: new Date().toISOString() });
                 }
+
+                // Start polling to detect if we get kicked
+                startPlayerExistenceCheck();
                 return;
             }
 
@@ -1883,6 +2105,9 @@
 
             // Add player to database
             await addPlayerToDB(name);
+
+            // Start polling to detect if we get kicked
+            startPlayerExistenceCheck();
         }
 
         function updateJoinSection() {
@@ -1902,7 +2127,18 @@
         }
 
         function updateLobby() {
+            // Safety check - only skip if we're not in waiting stage (prevents errors during menu transition)
+            if (gameState.stage !== 'waiting') {
+                console.log('updateLobby called but not in waiting stage, ignoring');
+                return;
+            }
+
             const lobbyDiv = document.getElementById('lobby-players');
+            if (!lobbyDiv) {
+                console.log('lobby-players element not found');
+                return;
+            }
+
             lobbyDiv.innerHTML = '';
 
             const readyPlayers = gameState.players.filter(p => p.ready);
@@ -1973,14 +2209,19 @@
             }
 
             if (confirm(`Are you sure you want to kick ${playerName}?`)) {
+                console.log('Host kicking player:', playerName);
+
                 // Remove from local state
                 const playerIndex = gameState.players.findIndex(p => p.name === playerName);
                 if (playerIndex !== -1) {
                     gameState.players.splice(playerIndex, 1);
+                    console.log('Removed from local state');
                 }
 
                 // Remove from database
+                console.log('Calling removePlayerFromDB...');
                 await removePlayerFromDB(playerName);
+                console.log('removePlayerFromDB completed');
 
                 updateLobby();
             }
@@ -2476,7 +2717,10 @@
             const roomCode = urlParams.get('room');
 
             if (roomCode && supabaseClient) {
-                // Try to join existing game
+                // Hide menu, try to join existing game
+                document.getElementById('main-menu').classList.add('hidden');
+                document.getElementById('setup-phase').classList.add('hidden');
+
                 const gameData = await joinGameFromDB(roomCode);
 
                 if (gameData) {
@@ -2490,20 +2734,23 @@
 
                     // Show appropriate stage
                     if (gameState.stage === 'waiting') {
-                        document.getElementById('setup-phase').classList.add('hidden');
                         document.getElementById('waiting-room').classList.remove('hidden');
                         generateQRCode();
                         updateJoinSection();
                         updateLobby();
                     } else if (gameState.stage === 'playing') {
-                        document.getElementById('setup-phase').classList.add('hidden');
-                        document.getElementById('waiting-room').classList.add('hidden');
                         document.getElementById('game-phase').classList.remove('hidden');
                         // Don't call displayGameplay() yet - player needs to join first
                     }
                 } else {
-                    alert(`Game with room code "${roomCode}" not found. Starting new game.`);
+                    alert(`Game with room code "${roomCode}" not found.`);
+                    // Show menu since game wasn't found
+                    document.getElementById('main-menu').classList.remove('hidden');
                 }
+            } else {
+                // No room code in URL - show main menu
+                document.getElementById('setup-phase').classList.add('hidden');
+                document.getElementById('main-menu').classList.remove('hidden');
             }
         };
     </script>
