@@ -815,7 +815,7 @@
                         <span id="role-text"></span>
                     </div>
                     <button class="btn-primary" onclick="toggleRole()" style="margin-top: 15px;" id="toggle-role-btn">
-                        👁️ Reveal Role
+                        Reveal Role
                     </button>
                 </div>
             </div>
@@ -1484,7 +1484,7 @@
             }
         }
 
-        function handleStageChange() {
+        async function handleStageChange() {
             // Show/hide appropriate UI sections based on stage
             if (gameState.stage === 'waiting') {
                 document.getElementById('setup-phase').classList.add('hidden');
@@ -1495,6 +1495,31 @@
                 // Set current player if not already set (for non-host players joining mid-game)
                 if (!gameState.currentPlayer && myPlayerName) {
                     gameState.currentPlayer = myPlayerName;
+                }
+
+                // For non-host players, reload player data from DB to get roles/tasks
+                if (myPlayerName && supabaseClient && currentGameId) {
+                    try {
+                        const { data, error } = await supabaseClient
+                            .from('players')
+                            .select('*')
+                            .eq('game_id', currentGameId)
+                            .eq('name', myPlayerName)
+                            .single();
+
+                        if (!error && data) {
+                            // Update local player data with role and tasks from DB
+                            const playerIndex = gameState.players.findIndex(p => p.name === myPlayerName);
+                            if (playerIndex !== -1) {
+                                gameState.players[playerIndex].role = data.role;
+                                gameState.players[playerIndex].tasks = data.tasks || [];
+                                gameState.players[playerIndex].tasksCompleted = data.tasks_completed || 0;
+                                console.log('Loaded player data from DB:', data);
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Error loading player data:', err);
+                    }
                 }
 
                 document.getElementById('waiting-room').classList.add('hidden');
@@ -2387,8 +2412,10 @@
             const player = gameState.players.find(p => p.name === gameState.currentPlayer);
             if (!player) return;
 
-            // Normalized role display - same color and text for both roles
-            document.getElementById('role-text').textContent = 'PLAYER';
+            // Display actual role but with same color styling for both (prevents visual giveaways)
+            const roleText = player.role.charAt(0).toUpperCase() + player.role.slice(1);
+            document.getElementById('role-text').textContent = roleText;
+            // Both roles use the same color class to avoid visual giveaways
             document.getElementById('role-text').className = 'role-revealed role-crewmate';
 
             document.getElementById('meetings-remaining').textContent =
@@ -2492,11 +2519,11 @@
             if (hidden.classList.contains('hidden')) {
                 hidden.classList.remove('hidden');
                 revealed.classList.add('hidden');
-                btn.textContent = '👁️ Reveal Role';
+                btn.textContent = 'Reveal Role';
             } else {
                 hidden.classList.add('hidden');
                 revealed.classList.remove('hidden');
-                btn.textContent = '🙈 Hide Role';
+                btn.textContent = 'Hide Role';
             }
         }
 
