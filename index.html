@@ -787,15 +787,6 @@
                 <div id="player-tasks"></div>
             </div>
 
-            <!-- Imposter Actions -->
-            <div class="card hidden" id="imposter-actions">
-                <h2>Imposter Actions</h2>
-                <p style="color: #a0a0a0; margin-bottom: 15px;">Elimination cooldown: <span id="cooldown-timer">30s</span></p>
-                <button class="btn-danger btn-block" onclick="eliminatePlayer()" id="eliminate-btn">
-                    ☠️ Eliminate Target
-                </button>
-            </div>
-
             <!-- Emergency Meeting Button -->
             <div class="card">
                 <button class="btn-danger btn-block" onclick="callMeeting()" style="font-size: 1.5rem; padding: 20px;">
@@ -2065,12 +2056,59 @@
             const shuffled = [...gameState.players].sort(() => Math.random() - 0.5);
             const imposterNames = shuffled.slice(0, gameState.settings.imposterCount).map(p => p.name);
 
-            // Assign tasks
+            // Collect all enabled tasks from selected rooms
+            const allTasks = [];
+            const uniqueTasks = [];
+
+            Object.keys(gameState.settings.selectedRooms).forEach(roomName => {
+                const room = gameState.settings.selectedRooms[roomName];
+                if (room.enabled) {
+                    room.tasks.forEach(task => {
+                        if (task.enabled) {
+                            const taskObj = { room: roomName, task: task.name };
+                            if (task.unique) {
+                                uniqueTasks.push(taskObj);
+                            } else {
+                                allTasks.push(taskObj);
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Assign tasks to players
             gameState.players.forEach(player => {
                 player.role = imposterNames.includes(player.name) ? 'imposter' : 'crewmate';
-                player.tasks = []; // TODO: Assign tasks from selected rooms
                 player.alive = true;
                 player.tasksCompleted = 0;
+
+                // Assign tasks based on role
+                const assignedTasks = [];
+                const isImposter = player.role === 'imposter';
+
+                // For imposters: only non-unique tasks (dummy tasks for appearance)
+                // For crewmates: mix of unique and non-unique tasks
+                const availableNonUnique = [...allTasks];
+                const availableUnique = isImposter ? [] : [...uniqueTasks];
+
+                // Shuffle available tasks
+                availableNonUnique.sort(() => Math.random() - 0.5);
+                availableUnique.sort(() => Math.random() - 0.5);
+
+                // Assign the required number of tasks
+                for (let i = 0; i < gameState.settings.tasksPerPlayer; i++) {
+                    // Try to assign unique task first (crewmates only)
+                    if (availableUnique.length > 0 && Math.random() < 0.3) {
+                        const uniqueTask = availableUnique.shift();
+                        assignedTasks.push(uniqueTask);
+                    } else if (availableNonUnique.length > 0) {
+                        // Assign regular task (can be reused across players)
+                        const taskIndex = Math.floor(Math.random() * availableNonUnique.length);
+                        assignedTasks.push(availableNonUnique[taskIndex]);
+                    }
+                }
+
+                player.tasks = assignedTasks;
             });
 
             // Set current player based on this device's player (if joined)
@@ -2108,18 +2146,101 @@
             const player = gameState.players.find(p => p.name === gameState.currentPlayer);
             if (!player) return;
 
-            document.getElementById('role-text').textContent =
-                player.role === 'imposter' ? '☠️ IMPOSTER' : '👤 CREWMATE';
-            document.getElementById('role-text').className =
-                player.role === 'imposter' ? 'role-revealed role-imposter' : 'role-revealed role-crewmate';
-
-            // Show/hide imposter actions
-            if (player.role === 'imposter') {
-                document.getElementById('imposter-actions').classList.remove('hidden');
-            }
+            // Normalized role display - same color and text for both roles
+            document.getElementById('role-text').textContent = 'PLAYER';
+            document.getElementById('role-text').className = 'role-revealed role-crewmate';
 
             document.getElementById('meetings-remaining').textContent =
                 gameState.settings.meetingLimit - gameState.meetingsUsed;
+
+            // Render player's task list
+            renderPlayerTasks();
+        }
+
+        function renderPlayerTasks() {
+            const player = gameState.players.find(p => p.name === gameState.currentPlayer);
+            if (!player) return;
+
+            const tasksContainer = document.getElementById('player-tasks');
+            const completedCount = document.getElementById('completed-tasks-count');
+            const totalCount = document.getElementById('total-tasks-count');
+
+            tasksContainer.innerHTML = '';
+            completedCount.textContent = player.tasksCompleted || 0;
+            totalCount.textContent = player.tasks.length;
+
+            // Display each task with a checkbox
+            player.tasks.forEach((taskObj, index) => {
+                const taskItem = document.createElement('div');
+                taskItem.style.cssText = 'display: flex; align-items: center; padding: 8px; margin-bottom: 5px; background: rgba(255,255,255,0.05); border-radius: 5px;';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `task-${index}`;
+                checkbox.style.cssText = 'margin-right: 10px; width: 18px; height: 18px; cursor: pointer;';
+                checkbox.checked = index < (player.tasksCompleted || 0);
+
+                // Only allow crewmates to actually complete tasks (imposters' checks are cosmetic)
+                checkbox.onchange = () => toggleTaskComplete(index);
+
+                const label = document.createElement('label');
+                label.htmlFor = `task-${index}`;
+                label.style.cssText = 'flex: 1; cursor: pointer; color: #fff;';
+                label.textContent = `${taskObj.task} (${taskObj.room})`;
+
+                taskItem.appendChild(checkbox);
+                taskItem.appendChild(label);
+                tasksContainer.appendChild(taskItem);
+            });
+        }
+
+        function toggleTaskComplete(taskIndex) {
+            const player = gameState.players.find(p => p.name === gameState.currentPlayer);
+            if (!player) return;
+
+            const checkbox = document.getElementById(`task-${taskIndex}`);
+
+            if (checkbox.checked) {
+                // Task completed
+                player.tasksCompleted = Math.min((player.tasksCompleted || 0) + 1, player.tasks.length);
+            } else {
+                // Task unchecked
+                player.tasksCompleted = Math.max((player.tasksCompleted || 0) - 1, 0);
+            }
+
+            // Update the count display
+            document.getElementById('completed-tasks-count').textContent = player.tasksCompleted;
+
+            // Only update database for crewmates (imposters' tasks are dummy)
+            if (player.role === 'crewmate') {
+                // Update player in database
+                if (supabaseClient && currentGameId) {
+                    updatePlayerInDB(player.name, {
+                        tasks_completed: player.tasksCompleted
+                    });
+                }
+
+                // Check if crewmates won
+                checkCrewmateVictory();
+            }
+        }
+
+        function checkCrewmateVictory() {
+            // Count total tasks and completed tasks for all crewmates
+            let totalCrewmateTasks = 0;
+            let completedCrewmateTasks = 0;
+
+            gameState.players.forEach(player => {
+                if (player.role === 'crewmate' && player.alive) {
+                    totalCrewmateTasks += player.tasks.length;
+                    completedCrewmateTasks += player.tasksCompleted || 0;
+                }
+            });
+
+            // Check if all tasks are completed
+            if (totalCrewmateTasks > 0 && completedCrewmateTasks >= totalCrewmateTasks) {
+                endGame('crewmates', 'All tasks completed!');
+            }
         }
 
         function toggleRole() {
