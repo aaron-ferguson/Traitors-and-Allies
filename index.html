@@ -267,9 +267,17 @@
 
         <!-- STAGE 4: MEETING -->
         <div id="meeting-phase" class="hidden">
+            <!-- Toggle button for Host Elimination Controls -->
+            <button class="btn-warning btn-block hidden" id="toggle-elimination-controls-btn" onclick="toggleEliminationControls()" style="margin-bottom: 15px;">
+                ⚠️ Mark Additional Eliminations
+            </button>
+
             <!-- Host Elimination Controls -->
             <div class="card hidden" id="host-elimination-controls">
-                <h2>Mark Additional Eliminations</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2 style="margin: 0;">Mark Additional Eliminations</h2>
+                    <button class="btn-secondary btn-small" onclick="toggleEliminationControls()">Close</button>
+                </div>
                 <p style="color: #a0a0a0; margin-bottom: 15px;">Update player status before voting:</p>
                 <div id="host-player-status-list"></div>
             </div>

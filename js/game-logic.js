@@ -845,9 +845,9 @@ if (myPlayerName) {
 gameState.meetingReady[myPlayerName] = true;
 }
 
-// Show host controls if this is the host
+// Show toggle button for host controls if this is the host
 if (isHost()) {
-document.getElementById('host-elimination-controls').classList.remove('hidden');
+document.getElementById('toggle-elimination-controls-btn').classList.remove('hidden');
 renderHostPlayerStatus();
 }
 
@@ -883,16 +883,24 @@ list.appendChild(item);
 });
 }
 
-function confirmTogglePlayerAlive(playerName) {
-const player = gameState.players.find(p => p.name === playerName);
-if (!player) return;
+function toggleEliminationControls() {
+const controlsSection = document.getElementById('host-elimination-controls');
+const toggleButton = document.getElementById('toggle-elimination-controls-btn');
 
-const action = player.alive ? 'eliminate' : 'mark as alive';
-const confirmed = confirm(`Are you sure you want to ${action} ${playerName}?\n\nThis may affect the game outcome.`);
-
-if (confirmed) {
-togglePlayerAlive(playerName);
+if (controlsSection.classList.contains('hidden')) {
+// Show the controls section
+controlsSection.classList.remove('hidden');
+toggleButton.classList.add('hidden');
+} else {
+// Hide the controls section
+controlsSection.classList.add('hidden');
+toggleButton.classList.remove('hidden');
 }
+}
+
+function confirmTogglePlayerAlive(playerName) {
+// No confirmation needed - the toggle button itself provides the extra step
+togglePlayerAlive(playerName);
 }
 
 async function togglePlayerAlive(playerName) {
