@@ -1004,6 +1004,14 @@ startVoting();
 }
 
 function startVoting() {
+// Disable host elimination controls once voting starts
+const toggleBtn = document.getElementById('toggle-elimination-controls-btn');
+if (toggleBtn) {
+toggleBtn.disabled = true;
+}
+// Hide the controls section if it's open
+document.getElementById('host-elimination-controls')?.classList.add('hidden');
+
 document.getElementById('discussion-phase').classList.add('hidden');
 document.getElementById('voting-phase').classList.remove('hidden');
 
