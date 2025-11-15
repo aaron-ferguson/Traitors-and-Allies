@@ -890,22 +890,20 @@
         <div id="game-end" class="hidden">
             <!-- Victory/Defeat Screen -->
             <div id="victory-screen" class="end-screen hidden">
-                <h2>🎉 VICTORY 🎉</h2>
+                <h2>VICTORY</h2>
                 <p style="font-size: 1.5rem; margin: 20px 0;">Your team won!</p>
                 <p style="color: #a0a0a0;">Return to the meeting location: <span id="meeting-location-victory">Living Room</span></p>
-                <button class="btn-primary" onclick="closeVictoryScreen()">View Game Summary</button>
             </div>
 
             <div id="defeat-screen" class="end-screen hidden">
-                <h2>💀 DEFEAT 💀</h2>
+                <h2>DEFEAT</h2>
                 <p style="font-size: 1.5rem; margin: 20px 0;">Your team was defeated!</p>
                 <p style="color: #a0a0a0;">Return to the meeting location: <span id="meeting-location-defeat">Living Room</span></p>
-                <button class="btn-primary" onclick="closeDefeatScreen()">View Game Summary</button>
             </div>
 
             <!-- Game Summary -->
             <div class="card">
-                <h2>Game Summary</h2>
+                <h2>Game Results</h2>
                 <div style="text-align: center; margin-bottom: 30px;">
                     <h3 id="winning-team" style="font-size: 2rem;"></h3>
                 </div>
@@ -913,18 +911,63 @@
                 <h3>All Players</h3>
                 <div id="game-summary"></div>
 
-                <!-- Host Controls -->
-                <div style="margin-top: 30px;">
-                    <button class="btn-success btn-block" onclick="newGameSameSettings()">
-                        🔄 New Game (Same Settings)
+                <!-- Host Controls (only visible to host) -->
+                <div id="host-game-controls" class="hidden" style="margin-top: 30px;">
+                    <button class="btn-primary btn-block" onclick="newGameSameSettings()">
+                        New Game (Same Settings)
                     </button>
-                    <button class="btn-primary btn-block" onclick="newGameNewSettings()">
-                        ⚙️ New Game (Change Settings)
+                    <button class="btn-secondary btn-block" onclick="newGameNewSettings()">
+                        New Game (Change Settings)
                     </button>
-                    <button class="btn-danger btn-block" onclick="endSession()">
-                        🚪 End Session
+                    <button class="btn-secondary btn-block" onclick="endSession()">
+                        End Session
                     </button>
                 </div>
+
+                <!-- Join Next Game Button (shown when player declines immediate join) -->
+                <div id="join-next-game-section" class="hidden" style="margin-top: 30px; text-align: center;">
+                    <button class="btn-primary btn-block" onclick="acceptNewGameInvitation()">
+                        Join Next Game
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- New Game Invitation Modal (outside game-end so it can show independently) -->
+        <div id="new-game-invitation" class="modal hidden">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>New Game Starting</h2>
+                <p style="color: #a0a0a0; margin: 20px 0;">The host is starting a new game. Would you like to join?</p>
+                <button class="btn-primary btn-block" onclick="acceptNewGameInvitation()" style="margin-bottom: 10px;">
+                    Join New Game
+                </button>
+                <button class="btn-secondary btn-block" onclick="declineNewGameInvitation('later')" style="margin-bottom: 10px;">
+                    Not Yet
+                </button>
+                <button class="btn-secondary btn-block" onclick="declineNewGameInvitation('no')">
+                    No Thanks
+                </button>
+            </div>
+        </div>
+
+        <!-- Name Confirmation Modal (outside game-end so it can show independently) -->
+        <div id="name-confirmation-modal" class="modal hidden">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>Confirm Your Name</h2>
+                <p style="color: #a0a0a0; margin: 20px 0;">Your previous name: <strong id="previous-name-display"></strong></p>
+                <div id="name-edit-section" class="hidden" style="margin-bottom: 20px;">
+                    <input type="text" id="name-edit-input" placeholder="Enter your name"
+                           style="width: 100%; padding: 12px; font-size: 1rem; margin-bottom: 10px;">
+                </div>
+                <button class="btn-primary btn-block" onclick="confirmPlayerName()" id="confirm-name-btn" style="margin-bottom: 10px;">
+                    Confirm Name
+                </button>
+                <button class="btn-secondary btn-block" onclick="editPlayerName()" id="edit-name-btn" style="margin-bottom: 10px;">
+                    Edit Name
+                </button>
+                <button class="btn-secondary btn-block" onclick="leaveGame()">
+                    Leave Game
+                </button>
             </div>
         </div>
 
@@ -1347,6 +1390,19 @@
                             if (newData.settings.meetingType) {
                                 gameState.meetingType = newData.settings.meetingType;
                             }
+
+                            // Check for new game invitation (for non-host players only)
+                            console.log('Checking for invitation - isHost:', isHost(), 'invitation:', newData.settings.newGameInvitation, 'myPlayerName:', myPlayerName);
+                            if (!isHost() && newData.settings.newGameInvitation && myPlayerName) {
+                                console.log('=== NEW GAME INVITATION DETECTED ===');
+                                console.log('Invitation type:', newData.settings.newGameInvitation);
+
+                                // Hide waiting room and show invitation modal
+                                // This ensures players can't see the waiting room until they accept
+                                document.getElementById('waiting-room').classList.add('hidden');
+                                document.getElementById('new-game-invitation').classList.remove('hidden');
+                                console.log('Invitation modal shown, waiting room hidden');
+                            }
                         }
 
                         gameState.meetingsUsed = newData.meetings_used;
@@ -1497,12 +1553,35 @@
         }
 
         async function handleStageChange() {
+            console.log('=== handleStageChange called ===');
+            console.log('Current stage:', gameState.stage);
+            console.log('myPlayerName:', myPlayerName);
+            console.log('isHost():', isHost());
+
             // Show/hide appropriate UI sections based on stage
             if (gameState.stage === 'waiting') {
+                console.log('Stage is WAITING');
                 document.getElementById('setup-phase').classList.add('hidden');
-                document.getElementById('waiting-room').classList.remove('hidden');
                 document.getElementById('game-phase').classList.add('hidden');
-                updateLobby();
+                document.getElementById('game-end').classList.add('hidden');
+
+                // Check if an invitation modal is currently showing
+                const invitationShowing = !document.getElementById('new-game-invitation').classList.contains('hidden');
+                const nameConfirmationShowing = !document.getElementById('name-confirmation-modal').classList.contains('hidden');
+
+                console.log('Invitation modal showing:', invitationShowing);
+                console.log('Name confirmation modal showing:', nameConfirmationShowing);
+
+                // Only hide waiting room if we're showing invitation or name confirmation
+                // Otherwise, show it normally (for initial game joins)
+                if (invitationShowing || nameConfirmationShowing) {
+                    console.log('Hiding waiting room (modal is showing)');
+                    document.getElementById('waiting-room').classList.add('hidden');
+                } else {
+                    console.log('Showing waiting room (no modals)');
+                    document.getElementById('waiting-room').classList.remove('hidden');
+                    updateLobby();
+                }
             } else if (gameState.stage === 'playing') {
                 // Set current player if not already set (for non-host players joining mid-game)
                 if (!gameState.currentPlayer && myPlayerName) {
@@ -1585,6 +1664,14 @@
                     if (gameState.settings && gameState.settings.meetingRoom) {
                         document.getElementById('meeting-location-defeat').textContent = gameState.settings.meetingRoom;
                     }
+                }
+
+                // Populate game summary
+                populateGameSummary();
+
+                // Show host controls if this player is the host
+                if (isHost()) {
+                    document.getElementById('host-game-controls').classList.remove('hidden');
                 }
             }
         }
@@ -2077,6 +2164,39 @@
             document.getElementById('min-players-display').textContent = gameState.settings.minPlayers;
             document.getElementById('max-players-display').textContent = gameState.settings.maxPlayers;
             document.getElementById('imposter-count-display').textContent = gameState.settings.imposterCount;
+
+            // Check if this is a new game after a previous one (need to send invitations)
+            const isNewGameAfterPrevious = gameState.isNewGameAfterPrevious || false;
+
+            if (isNewGameAfterPrevious && supabaseClient && currentGameId) {
+                console.log('This is a new game after previous - sending invitations');
+
+                // Send invitation to players from previous game
+                try {
+                    await supabaseClient
+                        .from('games')
+                        .update({
+                            settings: {
+                                ...gameState.settings,
+                                newGameInvitation: 'new_game',
+                                invitationTimestamp: new Date().toISOString()
+                            }
+                        })
+                        .eq('id', currentGameId);
+
+                    console.log('Invitation sent to previous players');
+
+                    // Wait a moment for invitation to propagate
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    // Clear the invitation flag
+                    delete gameState.settings.newGameInvitation;
+                    delete gameState.settings.invitationTimestamp;
+                    gameState.isNewGameAfterPrevious = false;
+                } catch (err) {
+                    console.error('Error sending invitation:', err);
+                }
+            }
 
             // Switch to waiting room
             gameState.stage = 'waiting';
@@ -2859,6 +2979,69 @@
                 document.getElementById('defeat-screen').classList.remove('hidden');
                 document.getElementById('meeting-location-defeat').textContent = gameState.settings.meetingRoom;
             }
+
+            // Populate game summary
+            populateGameSummary();
+
+            // Show host controls if this player is the host
+            if (isHost()) {
+                document.getElementById('host-game-controls').classList.remove('hidden');
+            }
+        }
+
+        function populateGameSummary() {
+            const summaryDiv = document.getElementById('game-summary');
+            const winningTeam = document.getElementById('winning-team');
+
+            // Set winning team text
+            if (gameState.winner === 'crewmates') {
+                winningTeam.textContent = 'Crewmates Win!';
+                winningTeam.style.color = '#4CAF50';
+            } else if (gameState.winner === 'imposters') {
+                winningTeam.textContent = 'Imposters Win!';
+                winningTeam.style.color = '#ff3838';
+            }
+
+            // Build player summary HTML
+            summaryDiv.innerHTML = '';
+            gameState.players.forEach(player => {
+                const playerCard = document.createElement('div');
+                playerCard.style.cssText = 'background: rgba(255,255,255,0.05); padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid ' + (player.role === 'imposter' ? '#ff3838' : '#4CAF50');
+
+                const roleText = player.role.charAt(0).toUpperCase() + player.role.slice(1);
+                const statusText = player.alive ? 'Alive' : 'Eliminated';
+                const statusColor = player.alive ? '#4CAF50' : '#ff3838';
+
+                // Build tasks list
+                let tasksHTML = '<div style="margin-top: 10px;">';
+                if (player.tasks && player.tasks.length > 0) {
+                    player.tasks.forEach((taskObj, index) => {
+                        const completed = index < (player.tasksCompleted || 0);
+                        const checkmark = completed ? '✓' : '○';
+                        const color = completed ? '#4CAF50' : '#a0a0a0';
+                        tasksHTML += `<div style="color: ${color}; font-size: 0.9rem; margin: 3px 0;">${checkmark} ${taskObj.task} (${taskObj.room})</div>`;
+                    });
+                } else {
+                    tasksHTML += '<div style="color: #a0a0a0; font-size: 0.9rem;">No tasks</div>';
+                }
+                tasksHTML += '</div>';
+
+                playerCard.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <strong style="font-size: 1.1rem;">${player.name}</strong>
+                        <div style="text-align: right;">
+                            <span style="background: ${player.role === 'imposter' ? '#ff3838' : '#4CAF50'}; padding: 3px 10px; border-radius: 12px; font-size: 0.85rem; margin-right: 8px;">${roleText}</span>
+                            <span style="color: ${statusColor}; font-size: 0.9rem;">${statusText}</span>
+                        </div>
+                    </div>
+                    <div style="color: #a0a0a0; font-size: 0.9rem; margin-bottom: 5px;">
+                        Tasks: ${player.tasksCompleted || 0}/${player.tasks ? player.tasks.length : 0} completed
+                    </div>
+                    ${tasksHTML}
+                `;
+
+                summaryDiv.appendChild(playerCard);
+            });
         }
 
         function closeVictoryScreen() {
@@ -2869,19 +3052,184 @@
             document.getElementById('defeat-screen').classList.add('hidden');
         }
 
-        function newGameSameSettings() {
+        async function newGameSameSettings() {
+            if (!isHost()) return;
+
+            console.log('Host starting new game with same settings - going to setup');
+
             // Reset game state but keep settings
             gameState.players = [];
             gameState.meetingsUsed = 0;
             gameState.gameEnded = false;
+            gameState.stage = 'setup';  // Go to setup, not waiting
+            gameState.winner = null;
+            gameState.meetingCaller = null;
+            gameState.meetingType = null;
+            gameState.isNewGameAfterPrevious = true;  // Flag to send invitations later
 
+            // Update database
+            if (supabaseClient && currentGameId) {
+                await updateGameInDB();
+            }
+
+            // Clear all game end UI
+            document.getElementById('victory-screen').classList.add('hidden');
+            document.getElementById('defeat-screen').classList.add('hidden');
+            document.getElementById('game-summary').innerHTML = '';
+            document.getElementById('winning-team').textContent = '';
+            document.getElementById('host-game-controls').classList.add('hidden');
+
+            // Hide game end, show setup
             document.getElementById('game-end').classList.add('hidden');
-            document.getElementById('waiting-room').classList.remove('hidden');
-            updateLobby();
+            document.getElementById('setup-phase').classList.remove('hidden');
         }
 
-        function newGameNewSettings() {
-            location.reload();
+        async function newGameNewSettings() {
+            if (!isHost()) return;
+
+            console.log('Host starting new game with new settings - going to setup');
+
+            // Reset game state
+            gameState.players = [];
+            gameState.meetingsUsed = 0;
+            gameState.gameEnded = false;
+            gameState.stage = 'setup';
+            gameState.winner = null;
+            gameState.meetingCaller = null;
+            gameState.meetingType = null;
+            gameState.isNewGameAfterPrevious = true;  // Flag to send invitations later
+
+            // Update database
+            if (supabaseClient && currentGameId) {
+                await updateGameInDB();
+            }
+
+            // Clear all game end UI
+            document.getElementById('victory-screen').classList.add('hidden');
+            document.getElementById('defeat-screen').classList.add('hidden');
+            document.getElementById('game-summary').innerHTML = '';
+            document.getElementById('winning-team').textContent = '';
+            document.getElementById('host-game-controls').classList.add('hidden');
+
+            // Hide game end, show setup
+            document.getElementById('game-end').classList.add('hidden');
+            document.getElementById('setup-phase').classList.remove('hidden');
+        }
+
+        function acceptNewGameInvitation() {
+            console.log('=== acceptNewGameInvitation called ===');
+            console.log('myPlayerName:', myPlayerName);
+
+            // Hide the invitation modal and join button
+            document.getElementById('new-game-invitation').classList.add('hidden');
+            document.getElementById('join-next-game-section').classList.add('hidden');
+            console.log('Invitation modal hidden');
+
+            // Clear all game end UI
+            document.getElementById('victory-screen').classList.add('hidden');
+            document.getElementById('defeat-screen').classList.add('hidden');
+            document.getElementById('game-summary').innerHTML = '';
+            document.getElementById('winning-team').textContent = '';
+            document.getElementById('game-end').classList.add('hidden');
+            console.log('Game end UI cleared');
+
+            // Show name confirmation modal
+            console.log('Calling showNameConfirmation...');
+            showNameConfirmation();
+        }
+
+        function showNameConfirmation() {
+            console.log('=== showNameConfirmation called ===');
+            console.log('myPlayerName:', myPlayerName);
+
+            // Set the previous name display
+            document.getElementById('previous-name-display').textContent = myPlayerName || '';
+            console.log('Set previous name display');
+
+            // Reset the edit section
+            document.getElementById('name-edit-section').classList.add('hidden');
+            document.getElementById('name-edit-input').value = myPlayerName || '';
+            document.getElementById('confirm-name-btn').classList.remove('hidden');
+            document.getElementById('edit-name-btn').classList.remove('hidden');
+            console.log('Reset edit section and buttons');
+
+            // Show the modal
+            document.getElementById('name-confirmation-modal').classList.remove('hidden');
+            console.log('Name confirmation modal shown');
+        }
+
+        function editPlayerName() {
+            console.log('Player wants to edit name');
+
+            // Show the edit input section
+            document.getElementById('name-edit-section').classList.remove('hidden');
+            document.getElementById('name-edit-input').focus();
+
+            // Hide the confirm and edit buttons, only show the input
+            document.getElementById('confirm-name-btn').textContent = 'Save Name';
+            document.getElementById('edit-name-btn').classList.add('hidden');
+        }
+
+        async function confirmPlayerName() {
+            console.log('=== confirmPlayerName called ===');
+
+            // Check if we're in edit mode
+            const editSection = document.getElementById('name-edit-section');
+            let nameToUse = myPlayerName;
+
+            console.log('Edit mode:', !editSection.classList.contains('hidden'));
+
+            if (!editSection.classList.contains('hidden')) {
+                // In edit mode - get the new name
+                const newName = document.getElementById('name-edit-input').value.trim();
+                if (!newName) {
+                    alert('Please enter a name');
+                    return;
+                }
+                nameToUse = newName;
+                myPlayerName = newName; // Update the stored name
+                console.log('Name changed to:', nameToUse);
+            }
+
+            console.log('Player confirmed name:', nameToUse);
+
+            // Hide the modal
+            document.getElementById('name-confirmation-modal').classList.add('hidden');
+            console.log('Name confirmation modal hidden');
+
+            // Show waiting room
+            document.getElementById('waiting-room').classList.remove('hidden');
+            console.log('Waiting room shown');
+
+            // Add player to the game
+            if (supabaseClient && currentGameId) {
+                console.log('Adding player to game...');
+                await addPlayerToGame(nameToUse);
+                console.log('Player added');
+            }
+        }
+
+        function leaveGame() {
+            console.log('Player chose to leave game');
+
+            // Hide the modal
+            document.getElementById('name-confirmation-modal').classList.add('hidden');
+
+            // Return to menu
+            returnToMenu();
+        }
+
+        function declineNewGameInvitation(response) {
+            console.log('Player declined new game invitation:', response);
+
+            // Hide the invitation modal
+            document.getElementById('new-game-invitation').classList.add('hidden');
+
+            if (response === 'later') {
+                // Show "Join Next Game" button
+                document.getElementById('join-next-game-section').classList.remove('hidden');
+            }
+            // If response is 'no', just stay in the current screen
         }
 
         function endSession() {
