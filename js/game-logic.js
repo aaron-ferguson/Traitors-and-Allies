@@ -865,7 +865,12 @@ function renderHostPlayerStatus() {
 const list = document.getElementById('host-player-status-list');
 list.innerHTML = '';
 
-gameState.players.forEach(player => {
+// Sort players alphabetically by name for easier lookup
+const sortedPlayers = [...gameState.players].sort((a, b) =>
+a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+);
+
+sortedPlayers.forEach(player => {
 const item = document.createElement('div');
 item.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 10px; margin-bottom: 8px; background: rgba(255, 255, 255, 0.05); border-radius: 6px;';
 
