@@ -296,6 +296,24 @@
             display: none !important;
         }
 
+        /* Edit Mode Toggle */
+        .edit-mode-toggle {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 12px;
+            padding: 0 10px;
+        }
+
+        .edit-mode-btn {
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            min-height: 40px;
+        }
+
+        .edit-mode-btn.active {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        }
+
         /* Room/Task Selection */
         .room-section {
             background: rgba(255, 255, 255, 0.08);
@@ -308,6 +326,25 @@
 
         .room-section:hover {
             background: rgba(255, 255, 255, 0.12);
+        }
+
+        /* Drag and drop styles */
+        .room-section.drag-over {
+            background: rgba(94, 179, 246, 0.2);
+            border: 2px dashed #5eb3f6;
+        }
+
+        .task-item.dragging {
+            opacity: 0.5;
+            cursor: move;
+        }
+
+        .task-item.drag-over {
+            border-top: 3px solid #5eb3f6;
+        }
+
+        .task-item[draggable="true"] {
+            cursor: move;
         }
 
         .room-header {
@@ -343,19 +380,33 @@
             margin-top: 10px;
         }
 
+        /* Swipe container for task items */
+        .task-item-wrapper {
+            position: relative;
+            margin-bottom: 8px;
+            overflow: hidden;
+            border-radius: 6px;
+        }
+
         .task-item {
             padding: 12px;
-            margin-bottom: 8px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 6px;
             display: flex;
             align-items: flex-start;
             gap: 12px;
-            transition: background 0.2s ease;
+            position: relative;
+            transition: transform 0.3s ease, background 0.2s ease;
+            touch-action: pan-y;
+            z-index: 2;
         }
 
         .task-item:hover {
             background: rgba(255, 255, 255, 0.1);
+        }
+
+        .task-item.swiped {
+            transform: translateX(-80px);
         }
 
         .task-item input[type="checkbox"] {
@@ -375,6 +426,77 @@
             font-size: 1rem;
             line-height: 1.5;
             word-break: break-word;
+        }
+
+        /* Delete button revealed by swipe - hidden by default */
+        .task-delete-reveal {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 80px;
+            background: linear-gradient(135deg, #ff3838 0%, #d32f2f 100%);
+            display: none; /* Hidden unless in edit mode on mobile */
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Only show swipe delete on mobile in edit mode */
+        .edit-mode.mobile .task-delete-reveal {
+            display: flex;
+        }
+
+        .task-delete-reveal:active {
+            background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+        }
+
+        .task-delete-icon {
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        /* Desktop delete buttons - visible in edit mode */
+        .task-delete-btn-desktop {
+            display: none;
+            margin-left: auto;
+        }
+
+        .edit-mode.desktop .task-delete-btn-desktop {
+            display: block;
+        }
+
+        /* Room delete button - hidden by default, shown in edit mode */
+        .room-delete-btn {
+            display: none;
+            margin-left: auto;
+        }
+
+        .edit-mode .room-delete-btn {
+            display: block;
+        }
+
+        /* Add Task button - hidden by default, shown in edit mode */
+        .add-task-btn {
+            display: none;
+            margin-top: 12px;
+            margin-left: 30px;
+        }
+
+        .edit-mode .add-task-btn {
+            display: inline-block;
+        }
+
+        /* Add Room button - hidden by default, shown in edit mode */
+        #add-room-btn {
+            display: none;
+            margin-top: 15px;
+        }
+
+        .edit-mode #add-room-btn {
+            display: inline-block;
         }
 
         /* Container for rooms and tasks with proper padding */
@@ -1046,6 +1168,11 @@
                     <span>▼</span>
                 </div>
                 <div class="collapsible-content">
+                    <div class="edit-mode-toggle">
+                        <button class="btn-secondary edit-mode-btn" onclick="toggleEditMode()" id="edit-mode-btn">
+                            ✏️ Edit Mode
+                        </button>
+                    </div>
                     <div id="rooms-tasks-container"></div>
                 </div>
 
@@ -2112,7 +2239,6 @@
             const addRoomBtn = document.createElement('button');
             addRoomBtn.id = 'add-room-btn';
             addRoomBtn.className = 'btn-primary';
-            addRoomBtn.style.marginTop = '15px';
             addRoomBtn.innerHTML = '➕ Add Room';
             addRoomBtn.onclick = showAddRoomModal;
             container.appendChild(addRoomBtn);
@@ -2145,7 +2271,7 @@
             roomHeader.innerHTML = `
                 <input type="checkbox" class="room-checkbox" id="room-${roomName}" onchange="toggleRoom('${roomName}')" ${gameState.settings.selectedRooms[roomName].enabled ? 'checked' : ''}>
                 <label for="room-${roomName}">${roomName}</label>
-                <button onclick="deleteRoom('${roomName}')" class="btn-danger btn-small" style="margin-left: auto;">🗑️ Delete</button>
+                <button onclick="deleteRoom('${roomName}')" class="btn-danger btn-small room-delete-btn">🗑️ Delete</button>
             `;
 
             const taskList = document.createElement('ul');
@@ -2158,9 +2284,7 @@
 
             // Add "Add Task" button
             const addTaskBtn = document.createElement('button');
-            addTaskBtn.className = 'btn-primary btn-small';
-            addTaskBtn.style.marginTop = '12px';
-            addTaskBtn.style.marginLeft = '30px';
+            addTaskBtn.className = 'btn-primary btn-small add-task-btn';
             addTaskBtn.innerHTML = '➕ Add Task';
             addTaskBtn.onclick = () => showAddTaskModal(roomName);
 
@@ -2178,22 +2302,322 @@
 
         function renderTask(roomName, taskIndex, taskList) {
             const task = gameState.settings.selectedRooms[roomName].tasks[taskIndex];
-            const taskItem = document.createElement('li');
-            taskItem.className = 'task-item';
-            taskItem.id = `task-item-${roomName}-${taskIndex}`;
+
+            // Create wrapper for swipe functionality
+            const wrapper = document.createElement('li');
+            wrapper.className = 'task-item-wrapper';
+            wrapper.id = `task-wrapper-${roomName}-${taskIndex}`;
 
             const isRoomDisabled = !gameState.settings.selectedRooms[roomName].enabled;
 
+            // Create the task item
+            const taskItem = document.createElement('div');
+            taskItem.className = 'task-item';
+            taskItem.id = `task-item-${roomName}-${taskIndex}`;
             taskItem.innerHTML = `
                 <input type="checkbox" id="task-${roomName}-${taskIndex}" ${task.enabled ? 'checked' : ''} ${isRoomDisabled ? 'disabled' : ''} onchange="toggleTaskEnabled('${roomName}', ${taskIndex})" class="task-enable-checkbox">
                 <label for="task-${roomName}-${taskIndex}" id="task-label-${roomName}-${taskIndex}">${task.name}</label>
-                <div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
-                    <button onclick="editTask('${roomName}', ${taskIndex})" class="btn-primary btn-small" style="padding: 6px 10px; min-height: 32px;">✏️</button>
-                    <button onclick="deleteTask('${roomName}', ${taskIndex})" class="btn-danger btn-small" style="padding: 6px 10px; min-height: 32px;">🗑️</button>
-                </div>
+                <button onclick="handleTaskDelete('${roomName}', ${taskIndex})" class="btn-danger btn-small task-delete-btn-desktop">🗑️</button>
             `;
 
-            taskList.appendChild(taskItem);
+            // Store room name and task index for drag and drop and swipe
+            taskItem.dataset.roomName = roomName;
+            taskItem.dataset.taskIndex = taskIndex;
+
+            // Create delete button that appears when swiped
+            const deleteReveal = document.createElement('div');
+            deleteReveal.className = 'task-delete-reveal';
+            deleteReveal.innerHTML = '<span class="task-delete-icon">🗑️</span>';
+            deleteReveal.onclick = () => handleTaskDelete(roomName, taskIndex);
+
+            wrapper.appendChild(deleteReveal);
+            wrapper.appendChild(taskItem);
+            taskList.appendChild(wrapper);
+
+            // Only add swipe handlers in edit mode on mobile devices
+            if (isEditMode && isMobile) {
+                setupSwipeHandlers(taskItem, roomName, taskIndex);
+            }
+        }
+
+        // Device Detection
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+                || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+        }
+
+        // Edit Mode Toggle
+        let isEditMode = false;
+        const isMobile = isMobileDevice();
+
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const container = document.getElementById('rooms-tasks-container');
+            const btn = document.getElementById('edit-mode-btn');
+
+            if (isEditMode) {
+                container.classList.add('edit-mode');
+                // Add device-specific class
+                container.classList.add(isMobile ? 'mobile' : 'desktop');
+                btn.classList.add('active');
+                btn.innerHTML = '✅ Done Editing';
+                enableDragAndDrop();
+
+                // Only enable swipe on mobile
+                if (isMobile) {
+                    enableSwipeHandlers();
+                }
+            } else {
+                container.classList.remove('edit-mode', 'mobile', 'desktop');
+                btn.classList.remove('active');
+                btn.innerHTML = '✏️ Edit Mode';
+                disableDragAndDrop();
+
+                // Only disable swipe if it was enabled
+                if (isMobile) {
+                    disableSwipeHandlers();
+                }
+            }
+        }
+
+        // Swipe-to-Delete functionality
+        function enableSwipeHandlers() {
+            const taskItems = document.querySelectorAll('.task-item');
+            taskItems.forEach(item => {
+                const roomName = item.dataset.roomName;
+                const taskIndex = item.dataset.taskIndex;
+                setupSwipeHandlers(item, roomName, taskIndex);
+            });
+        }
+
+        function disableSwipeHandlers() {
+            const taskItems = document.querySelectorAll('.task-item');
+            taskItems.forEach(item => {
+                item.classList.remove('swiped');
+                // Remove event listeners by cloning and replacing
+                const newItem = item.cloneNode(true);
+                item.parentNode.replaceChild(newItem, item);
+            });
+        }
+
+        function setupSwipeHandlers(element, roomName, taskIndex) {
+            let startX = 0;
+            let currentX = 0;
+            let isSwiping = false;
+
+            element.addEventListener('touchstart', handleTouchStart, { passive: true });
+            element.addEventListener('touchmove', handleTouchMove, { passive: false });
+            element.addEventListener('touchend', handleTouchEnd);
+
+            // Mouse support for testing on desktop
+            element.addEventListener('mousedown', handleTouchStart);
+            element.addEventListener('mousemove', handleTouchMove);
+            element.addEventListener('mouseup', handleTouchEnd);
+
+            function handleTouchStart(e) {
+                // Close other swiped items
+                document.querySelectorAll('.task-item.swiped').forEach(item => {
+                    if (item !== element) {
+                        item.classList.remove('swiped');
+                    }
+                });
+
+                startX = e.touches ? e.touches[0].clientX : e.clientX;
+                isSwiping = true;
+            }
+
+            function handleTouchMove(e) {
+                if (!isSwiping) return;
+
+                currentX = e.touches ? e.touches[0].clientX : e.clientX;
+                const diff = startX - currentX;
+
+                // Only allow swipe left (positive diff)
+                if (diff > 0 && diff < 100) {
+                    e.preventDefault();
+                    element.style.transform = `translateX(-${diff}px)`;
+                }
+            }
+
+            function handleTouchEnd(e) {
+                if (!isSwiping) return;
+                isSwiping = false;
+
+                const diff = startX - currentX;
+
+                // If already swiped and user swipes left again, delete
+                if (element.classList.contains('swiped') && diff > 30) {
+                    handleTaskDelete(roomName, taskIndex);
+                    return;
+                }
+
+                // Threshold for revealing delete (40px)
+                if (diff > 40) {
+                    element.classList.add('swiped');
+                    element.style.transform = '';
+                } else {
+                    element.classList.remove('swiped');
+                    element.style.transform = '';
+                }
+            }
+        }
+
+        function handleTaskDelete(roomName, taskIndex) {
+            deleteTask(roomName, taskIndex);
+        }
+
+        // Drag and Drop functionality
+        let draggedTask = null;
+
+        function enableDragAndDrop() {
+            const taskItems = document.querySelectorAll('.task-item');
+            const taskLists = document.querySelectorAll('.task-list');
+
+            taskItems.forEach(item => {
+                item.setAttribute('draggable', 'true');
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragend', handleDragEnd);
+                item.addEventListener('dragover', handleDragOver);
+                item.addEventListener('drop', handleDrop);
+            });
+
+            taskLists.forEach(list => {
+                list.addEventListener('dragover', handleListDragOver);
+                list.addEventListener('drop', handleListDrop);
+            });
+        }
+
+        function disableDragAndDrop() {
+            const taskItems = document.querySelectorAll('.task-item');
+            const taskLists = document.querySelectorAll('.task-list');
+
+            taskItems.forEach(item => {
+                item.removeAttribute('draggable');
+                item.removeEventListener('dragstart', handleDragStart);
+                item.removeEventListener('dragend', handleDragEnd);
+                item.removeEventListener('dragover', handleDragOver);
+                item.removeEventListener('drop', handleDrop);
+            });
+
+            taskLists.forEach(list => {
+                list.removeEventListener('dragover', handleListDragOver);
+                list.removeEventListener('drop', handleListDrop);
+            });
+        }
+
+        function handleDragStart(e) {
+            draggedTask = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+
+            // Remove all drag-over classes
+            document.querySelectorAll('.drag-over').forEach(el => {
+                el.classList.remove('drag-over');
+            });
+        }
+
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+
+            if (this !== draggedTask) {
+                this.classList.add('drag-over');
+            }
+            return false;
+        }
+
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+
+            this.classList.remove('drag-over');
+
+            if (draggedTask !== this) {
+                // Get source and target information
+                const sourceRoom = draggedTask.dataset.roomName;
+                const sourceIndex = parseInt(draggedTask.dataset.taskIndex);
+                const targetRoom = this.dataset.roomName;
+                const targetIndex = parseInt(this.dataset.taskIndex);
+
+                // Move task
+                moveTask(sourceRoom, sourceIndex, targetRoom, targetIndex);
+            }
+
+            return false;
+        }
+
+        function handleListDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleListDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+
+            // Get the room name from the list id (format: tasks-RoomName)
+            const targetRoom = this.id.replace('tasks-', '');
+            const sourceRoom = draggedTask.dataset.roomName;
+            const sourceIndex = parseInt(draggedTask.dataset.taskIndex);
+
+            // Move to end of target room
+            if (sourceRoom !== targetRoom || sourceIndex !== gameState.settings.selectedRooms[targetRoom].tasks.length - 1) {
+                moveTaskToRoom(sourceRoom, sourceIndex, targetRoom);
+            }
+
+            return false;
+        }
+
+        function moveTask(sourceRoom, sourceIndex, targetRoom, targetIndex) {
+            // Get the task to move
+            const task = gameState.settings.selectedRooms[sourceRoom].tasks[sourceIndex];
+
+            // Remove from source
+            gameState.settings.selectedRooms[sourceRoom].tasks.splice(sourceIndex, 1);
+
+            // Add to target
+            if (sourceRoom === targetRoom) {
+                // Same room, adjust index if needed
+                if (sourceIndex < targetIndex) {
+                    targetIndex--;
+                }
+            }
+            gameState.settings.selectedRooms[targetRoom].tasks.splice(targetIndex, 0, task);
+
+            // Re-render both rooms
+            renderAllRooms();
+            if (isEditMode) {
+                enableDragAndDrop();
+            }
+        }
+
+        function moveTaskToRoom(sourceRoom, sourceIndex, targetRoom) {
+            // Get the task to move
+            const task = gameState.settings.selectedRooms[sourceRoom].tasks[sourceIndex];
+
+            // Remove from source
+            gameState.settings.selectedRooms[sourceRoom].tasks.splice(sourceIndex, 1);
+
+            // Add to end of target
+            gameState.settings.selectedRooms[targetRoom].tasks.push(task);
+
+            // Re-render all rooms
+            renderAllRooms();
+            if (isEditMode) {
+                enableDragAndDrop();
+            }
         }
 
         // Room CRUD operations
@@ -2252,19 +2676,6 @@
             toggleUniqueVisibility();
         }
 
-        function editTask(roomName, taskIndex) {
-            const currentTask = gameState.settings.selectedRooms[roomName].tasks[taskIndex];
-            const newTaskName = prompt('Edit task description:', currentTask.name);
-
-            if (newTaskName && newTaskName.trim()) {
-                gameState.settings.selectedRooms[roomName].tasks[taskIndex].name = newTaskName.trim();
-                const label = document.getElementById(`task-label-${roomName}-${taskIndex}`);
-                if (label) {
-                    label.textContent = newTaskName.trim();
-                }
-            }
-        }
-
         function deleteTask(roomName, taskIndex) {
             gameState.settings.selectedRooms[roomName].tasks.splice(taskIndex, 1);
 
@@ -2277,6 +2688,11 @@
 
             // Apply current unique visibility setting
             toggleUniqueVisibility();
+
+            // Re-enable swipe handlers if in edit mode
+            if (isEditMode) {
+                enableSwipeHandlers();
+            }
         }
 
         function toggleCollapsible(element) {
