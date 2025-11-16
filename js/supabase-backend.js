@@ -550,8 +550,12 @@ console.error('Error loading player data:', err);
 }
 }
 
-console.log('Updating UI: hiding waiting room, showing game phase');
+console.log('Updating UI: hiding meeting/vote screens, showing game phase');
 document.getElementById('waiting-room').classList.add('hidden');
+document.getElementById('meeting-phase').classList.add('hidden');
+document.getElementById('vote-results').classList.add('hidden');
+document.getElementById('voting-phase').classList.add('hidden');
+document.getElementById('discussion-phase').classList.add('hidden');
 document.getElementById('game-phase').classList.remove('hidden');
 console.log('Calling displayGameplay()...');
 displayGameplay();

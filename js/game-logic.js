@@ -1402,7 +1402,13 @@ if (!isHost()) {
 return;
 }
 
+// Hide meeting and voting screens
 document.getElementById('meeting-phase').classList.add('hidden');
+document.getElementById('vote-results').classList.add('hidden');
+document.getElementById('voting-phase').classList.add('hidden');
+document.getElementById('discussion-phase').classList.add('hidden');
+
+// Show game phase
 document.getElementById('game-phase').classList.remove('hidden');
 gameState.stage = 'playing';
 
@@ -1413,6 +1419,7 @@ gameState.votingStarted = false;
 gameState.votesTallied = false;
 gameState.meetingType = null;
 gameState.meetingCaller = null;
+gameState.settings.voteResults = null; // Clear vote results
 selectedVote = null;
 
 // Update database
