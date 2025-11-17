@@ -1298,13 +1298,10 @@ isTie: isTie
 };
 
 // Sync game state (including vote results) to database
-// HOST does NOT display results directly - waits for database sync like everyone else
 if (supabaseClient && currentGameId) {
 await updateGameInDB();
-console.log('Vote results stored in database, waiting for sync to display...');
+console.log('Vote results stored in database');
 }
-// Note: displayVoteResults() will be called by subscribeToGame() callback
-// when the database update propagates back to ALL players (including host)
 
 // Check win conditions ONLY if someone was actually eliminated
 if (eliminatedPlayer) {
@@ -1318,8 +1315,19 @@ return; // Don't show resume button, game is ending
 }
 }
 
-// Note: Resume button will be configured by displayVoteResults() when called by subscription callback
-// This maintains centralized architecture where all players use same code path
+// Show resume button for host immediately (before subscription callback fires)
+// This provides immediate feedback while maintaining centralized architecture
+// All players (including host) will receive full results via subscribeToGame() callback
+if (isHost()) {
+const resumeBtn = document.getElementById('resume-game-btn');
+if (resumeBtn) {
+resumeBtn.classList.remove('hidden');
+resumeBtn.disabled = false;
+resumeBtn.textContent = 'Resume Game';
+resumeBtn.className = 'btn-success btn-block';
+console.log('Host: Resume button shown immediately after tallying');
+}
+}
 }
 
 function displayVoteResults(voteCounts, eliminatedPlayer, isTie) {
