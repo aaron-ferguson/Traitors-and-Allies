@@ -635,6 +635,20 @@ document.getElementById('role-text').className = 'role-revealed role-crewmate';
 document.getElementById('meetings-remaining').textContent =
 gameState.settings.meetingLimit - gameState.meetingsUsed;
 
+// Disable call meeting button for eliminated players
+const callMeetingBtn = document.getElementById('call-meeting-btn');
+if (callMeetingBtn) {
+if (!player.alive) {
+callMeetingBtn.disabled = true;
+callMeetingBtn.style.opacity = '0.5';
+callMeetingBtn.style.cursor = 'not-allowed';
+} else {
+callMeetingBtn.disabled = false;
+callMeetingBtn.style.opacity = '1';
+callMeetingBtn.style.cursor = 'pointer';
+}
+}
+
 // Render player's task list
 renderPlayerTasks();
 }
