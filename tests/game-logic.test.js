@@ -1876,6 +1876,161 @@ describe('Task Assignment Logic', () => {
     })
   })
 
+  describe('Task assignment - No duplicates and distinct rooms', () => {
+    it('should not assign duplicate tasks to the same player', () => {
+      // Set up multiple rooms with multiple tasks
+      gameState.settings.selectedRooms = {
+        'Kitchen': {
+          enabled: true,
+          tasks: [
+            { name: 'Cook Food', enabled: true, unique: false },
+            { name: 'Wash Dishes', enabled: true, unique: false }
+          ]
+        },
+        'Living Room': {
+          enabled: true,
+          tasks: [
+            { name: 'Vacuum', enabled: true, unique: false },
+            { name: 'Dust Shelves', enabled: true, unique: false }
+          ]
+        },
+        'Garage': {
+          enabled: true,
+          tasks: [
+            { name: 'Clean Car', enabled: true, unique: false }
+          ]
+        }
+      }
+      gameState.settings.tasksPerPlayer = 4
+
+      startGame()
+
+      gameState.players.forEach(player => {
+        const taskNames = player.tasks.map(t => t.task)
+        const uniqueTaskNames = new Set(taskNames)
+        // Should have no duplicates
+        expect(taskNames.length).toBe(uniqueTaskNames.size)
+      })
+    })
+
+    it('should assign tasks from distinct rooms when possible', () => {
+      // Set up 5 rooms with tasks, request 4 tasks per player
+      gameState.settings.selectedRooms = {
+        'Kitchen': {
+          enabled: true,
+          tasks: [{ name: 'Cook', enabled: true, unique: false }]
+        },
+        'Living Room': {
+          enabled: true,
+          tasks: [{ name: 'Vacuum', enabled: true, unique: false }]
+        },
+        'Garage': {
+          enabled: true,
+          tasks: [{ name: 'Clean Car', enabled: true, unique: false }]
+        },
+        'Bedroom': {
+          enabled: true,
+          tasks: [{ name: 'Make Bed', enabled: true, unique: false }]
+        },
+        'Bathroom': {
+          enabled: true,
+          tasks: [{ name: 'Scrub Sink', enabled: true, unique: false }]
+        }
+      }
+      gameState.settings.tasksPerPlayer = 4
+
+      startGame()
+
+      gameState.players.forEach(player => {
+        const rooms = player.tasks.map(t => t.room)
+        const uniqueRooms = new Set(rooms)
+        // Should have 4 tasks from 4 different rooms
+        expect(uniqueRooms.size).toBe(4)
+      })
+    })
+
+    it('should handle case where distinct rooms not possible (more tasks than rooms)', () => {
+      // Only 2 rooms, but need 4 tasks
+      gameState.settings.selectedRooms = {
+        'Kitchen': {
+          enabled: true,
+          tasks: [
+            { name: 'Cook', enabled: true, unique: false },
+            { name: 'Clean', enabled: true, unique: false }
+          ]
+        },
+        'Living Room': {
+          enabled: true,
+          tasks: [
+            { name: 'Vacuum', enabled: true, unique: false },
+            { name: 'Dust', enabled: true, unique: false }
+          ]
+        }
+      }
+      gameState.settings.tasksPerPlayer = 4
+
+      startGame()
+
+      gameState.players.forEach(player => {
+        // Should still get 4 tasks
+        expect(player.tasks.length).toBe(4)
+        // But no duplicates
+        const taskNames = player.tasks.map(t => t.task)
+        const uniqueTaskNames = new Set(taskNames)
+        expect(taskNames.length).toBe(uniqueTaskNames.size)
+      })
+    })
+
+    it('should respect unique task constraints while avoiding duplicates', () => {
+      gameState.settings.selectedRooms = {
+        'Kitchen': {
+          enabled: true,
+          tasks: [
+            { name: 'Cook', enabled: true, unique: false },
+            { name: 'Special Recipe', enabled: true, unique: true }
+          ]
+        },
+        'Living Room': {
+          enabled: true,
+          tasks: [
+            { name: 'Vacuum', enabled: true, unique: false },
+            { name: 'Rare Book', enabled: true, unique: true }
+          ]
+        },
+        'Garage': {
+          enabled: true,
+          tasks: [{ name: 'Clean Car', enabled: true, unique: false }]
+        }
+      }
+      gameState.settings.tasksPerPlayer = 3
+      gameState.settings.imposterCount = 1
+
+      startGame()
+
+      const imposters = gameState.players.filter(p => p.role === 'imposter')
+      const crewmates = gameState.players.filter(p => p.role === 'crewmate')
+
+      // Imposters should not get unique tasks
+      imposters.forEach(imposter => {
+        const uniqueTaskNames = ['Special Recipe', 'Rare Book']
+        imposter.tasks.forEach(task => {
+          expect(uniqueTaskNames).not.toContain(task.task)
+        })
+        // And no duplicates
+        const taskNames = imposter.tasks.map(t => t.task)
+        const uniqueTasks = new Set(taskNames)
+        expect(taskNames.length).toBe(uniqueTasks.size)
+      })
+
+      // Crewmates should have no duplicates
+      crewmates.forEach(crewmate => {
+        const taskNames = crewmate.tasks.map(t => t.task)
+        const uniqueTasks = new Set(taskNames)
+        expect(taskNames.length).toBe(uniqueTasks.size)
+      })
+    })
+  })
+
   describe('Task assignment - Edge cases', () => {
     it('should handle scenario with no unique tasks', () => {
       // Remove unique tasks
@@ -1919,15 +2074,8 @@ describe('Task Assignment Logic', () => {
       expect(() => startGame()).not.toThrow()
 
       gameState.players.forEach(player => {
-        // Non-unique tasks can be assigned multiple times, so players can get up to tasksPerPlayer
-        expect(player.tasks.length).toBeLessThanOrEqual(5)
-        // All tasks should be the same task repeated
-        if (player.tasks.length > 0) {
-          const firstTask = player.tasks[0].task
-          player.tasks.forEach(task => {
-            expect(task.task).toBe(firstTask)
-          })
-        }
+        // With no-duplicate logic, should only get 1 task (the only available task)
+        expect(player.tasks.length).toBeLessThanOrEqual(1)
       })
     })
 

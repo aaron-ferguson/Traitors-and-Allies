@@ -638,25 +638,89 @@ player.tasksCompleted = 0;
 const assignedTasks = [];
 const isImposter = player.role === 'imposter';
 
-// For imposters: only non-unique tasks (dummy tasks for appearance)
-// For crewmates: mix of unique and non-unique tasks
+// Track which tasks and rooms have been used for this player
+const usedTasks = new Set(); // Track task names to avoid duplicates
+const usedRooms = new Set(); // Track rooms to prefer distinct rooms
+
+// Create pools for this player
 const availableNonUnique = [...allTasks];
 const availableUnique = isImposter ? [] : [...uniqueTasks];
 
-// Shuffle available tasks
+// Shuffle available tasks for randomness
 availableNonUnique.sort(() => Math.random() - 0.5);
 availableUnique.sort(() => Math.random() - 0.5);
 
+// Build room-based task pool for easy distinct-room selection
+const tasksByRoom = {};
+availableNonUnique.forEach(task => {
+if (!tasksByRoom[task.room]) {
+tasksByRoom[task.room] = [];
+}
+tasksByRoom[task.room].push(task);
+});
+
 // Assign the required number of tasks
 for (let i = 0; i < gameState.settings.tasksPerPlayer; i++) {
-// Try to assign unique task first (crewmates only)
+let taskAssigned = false;
+
+// Try to assign unique task first (crewmates only, 30% chance)
 if (availableUnique.length > 0 && Math.random() < 0.3) {
-const uniqueTask = availableUnique.shift();
+// Find a unique task that hasn't been used
+for (let j = 0; j < availableUnique.length; j++) {
+const uniqueTask = availableUnique[j];
+const taskKey = `${uniqueTask.room}:${uniqueTask.task}`;
+if (!usedTasks.has(taskKey)) {
 assignedTasks.push(uniqueTask);
-} else if (availableNonUnique.length > 0) {
-// Assign regular task (can be reused across players)
-const taskIndex = Math.floor(Math.random() * availableNonUnique.length);
-assignedTasks.push(availableNonUnique[taskIndex]);
+usedTasks.add(taskKey);
+usedRooms.add(uniqueTask.room);
+availableUnique.splice(j, 1); // Remove so it's not assigned to another player
+taskAssigned = true;
+break;
+}
+}
+}
+
+// If no unique task assigned, try to assign from a room not yet used
+if (!taskAssigned) {
+// Get rooms that haven't been used yet
+const unusedRooms = Object.keys(tasksByRoom).filter(room => !usedRooms.has(room));
+
+if (unusedRooms.length > 0) {
+// Pick a random unused room
+const randomRoom = unusedRooms[Math.floor(Math.random() * unusedRooms.length)];
+const roomTasks = tasksByRoom[randomRoom];
+
+// Find a task from this room that hasn't been used
+for (const task of roomTasks) {
+const taskKey = `${task.room}:${task.task}`;
+if (!usedTasks.has(taskKey)) {
+assignedTasks.push(task);
+usedTasks.add(taskKey);
+usedRooms.add(task.room);
+taskAssigned = true;
+break;
+}
+}
+}
+
+// If all rooms used or no unused task in unused rooms, pick any available task
+if (!taskAssigned) {
+for (const task of availableNonUnique) {
+const taskKey = `${task.room}:${task.task}`;
+if (!usedTasks.has(taskKey)) {
+assignedTasks.push(task);
+usedTasks.add(taskKey);
+usedRooms.add(task.room);
+taskAssigned = true;
+break;
+}
+}
+}
+}
+
+// If still no task assigned (all tasks exhausted), stop trying
+if (!taskAssigned) {
+break;
 }
 }
 
