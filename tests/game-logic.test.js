@@ -404,6 +404,13 @@ describe('Win Condition Checks', () => {
           tasksCompleted: 2
         },
         {
+          name: 'Player3',
+          role: 'crewmate',
+          alive: false, // Eliminated player
+          tasks: ['Task5', 'Task6'],
+          tasksCompleted: 2 // All tasks complete
+        },
+        {
           name: 'Imposter1',
           role: 'imposter',
           alive: true,
@@ -418,6 +425,7 @@ describe('Win Condition Checks', () => {
       global.document = originalDocument
 
       // Verify game ended with crewmates winning
+      // All 6 crewmate tasks complete (including eliminated player's tasks)
       expect(gameState.gameEnded).toBe(true)
       expect(gameState.winner).toBe('crewmates')
       expect(gameState.stage).toBe('ended')
@@ -453,58 +461,6 @@ describe('Win Condition Checks', () => {
       // Should not end game - only 2/5 total crewmate tasks complete
       // Both alive AND eliminated crewmates' tasks count toward total
       expect(endGame).not.toHaveBeenCalled()
-    })
-
-    it('should win when all tasks complete (including eliminated players completed tasks)', () => {
-      // Mock DOM elements for endGame
-      const mockElement = {
-        classList: { add: vi.fn(), remove: vi.fn() },
-        innerHTML: '',
-        textContent: '',
-        style: {},
-        appendChild: vi.fn()
-      }
-      const originalDocument = global.document
-      global.document = {
-        ...originalDocument,
-        getElementById: vi.fn(() => mockElement),
-        body: originalDocument?.body || { innerHTML: '' },
-        createElement: vi.fn(() => mockElement)
-      }
-
-      gameState.players = [
-        {
-          name: 'Player1',
-          role: 'crewmate',
-          alive: true,
-          tasks: ['Task1', 'Task2'],
-          tasksCompleted: 2 // All tasks complete
-        },
-        {
-          name: 'Player2',
-          role: 'crewmate',
-          alive: false, // Eliminated player
-          tasks: ['Task3', 'Task4'],
-          tasksCompleted: 2 // All tasks complete (before elimination)
-        },
-        {
-          name: 'Imposter1',
-          role: 'imposter',
-          alive: true,
-          tasks: [],
-          tasksCompleted: 0
-        }
-      ]
-
-      checkCrewmateVictory()
-
-      // Restore document
-      global.document = originalDocument
-
-      // Should end game - all 4 crewmate tasks complete (4/4)
-      // Eliminated player's completed tasks count toward victory
-      expect(gameState.gameEnded).toBe(true)
-      expect(gameState.winner).toBe('crewmates')
     })
 
     it('should handle crewmates with no tasks', () => {
