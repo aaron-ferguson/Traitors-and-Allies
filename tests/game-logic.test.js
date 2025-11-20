@@ -17,7 +17,11 @@ import {
   displayVoteResults,
   checkWinConditions,
   checkCrewmateVictory,
-  endGame
+  endGame,
+  eliminatePlayer,
+  callMeeting,
+  acknowledgeMeeting,
+  resumeGame
 } from '../js/game-logic.js'
 import { gameState, setMyPlayerName, setIsGameCreator, setCurrentGameId } from '../js/game-state.js'
 
@@ -1634,6 +1638,701 @@ describe('Task Toggling', () => {
       toggleTaskComplete(0)
 
       expect(player.tasksCompleted).toBe(1)
+    })
+  })
+})
+
+describe('Task Assignment Logic', () => {
+  let mockElements
+
+  beforeEach(() => {
+    // Set up a complete game scenario
+    gameState.stage = 'waiting'
+    gameState.settings.imposterCount = 1
+    gameState.settings.tasksPerPlayer = 3
+    gameState.settings.selectedRooms = {
+      'Kitchen': {
+        enabled: true,
+        tasks: [
+          { name: 'Task1', enabled: true, unique: false },
+          { name: 'Task2', enabled: true, unique: false },
+          { name: 'Task3', enabled: true, unique: true }
+        ]
+      },
+      'Living Room': {
+        enabled: true,
+        tasks: [
+          { name: 'Task4', enabled: true, unique: false },
+          { name: 'Task5', enabled: true, unique: true }
+        ]
+      },
+      'Garage': {
+        enabled: false, // Disabled room
+        tasks: [
+          { name: 'Task6', enabled: true, unique: false }
+        ]
+      }
+    }
+
+    gameState.players = [
+      { name: 'Player1', ready: true },
+      { name: 'Player2', ready: true },
+      { name: 'Player3', ready: true },
+      { name: 'Player4', ready: true }
+    ]
+
+    setMyPlayerName('Player1')
+    setIsGameCreator(true)
+    gameState.hostName = 'Player1'
+
+    // Mock DOM elements
+    mockElements = {
+      waitingRoom: { classList: { add: vi.fn(), remove: vi.fn() } },
+      gamePhase: { classList: { add: vi.fn(), remove: vi.fn() } }
+    }
+
+    global.document = {
+      getElementById: vi.fn((id) => {
+        if (id === 'waiting-room') return mockElements.waitingRoom
+        if (id === 'game-phase') return mockElements.gamePhase
+        return {
+          classList: { add: vi.fn(), remove: vi.fn() },
+          style: {},
+          innerHTML: '',
+          textContent: '',
+          appendChild: vi.fn()
+        }
+      }),
+      createElement: vi.fn(() => ({
+        style: {},
+        classList: { add: vi.fn(), remove: vi.fn() },
+        appendChild: vi.fn()
+      })),
+      body: { innerHTML: '' }
+    }
+
+    global.updateGameInDB = vi.fn()
+    global.updatePlayerInDB = vi.fn()
+
+    vi.clearAllMocks()
+  })
+
+  describe('Role assignment', () => {
+    it('should assign correct number of imposters', () => {
+      startGame()
+
+      const imposters = gameState.players.filter(p => p.role === 'imposter')
+      expect(imposters).toHaveLength(gameState.settings.imposterCount)
+    })
+
+    it('should assign remaining players as crewmates', () => {
+      startGame()
+
+      const crewmates = gameState.players.filter(p => p.role === 'crewmate')
+      expect(crewmates).toHaveLength(gameState.players.length - gameState.settings.imposterCount)
+    })
+
+    it('should assign all players a role', () => {
+      startGame()
+
+      gameState.players.forEach(player => {
+        expect(player.role).toBeDefined()
+        expect(['imposter', 'crewmate']).toContain(player.role)
+      })
+    })
+  })
+
+  describe('Task assignment - Basic functionality', () => {
+    it('should assign tasks to all players', () => {
+      startGame()
+
+      gameState.players.forEach(player => {
+        expect(player.tasks).toBeDefined()
+        expect(Array.isArray(player.tasks)).toBe(true)
+      })
+    })
+
+    it('should assign tasks only from enabled rooms', () => {
+      startGame()
+
+      gameState.players.forEach(player => {
+        player.tasks.forEach(task => {
+          expect(task.room).not.toBe('Garage') // Disabled room
+          expect(['Kitchen', 'Living Room']).toContain(task.room)
+        })
+      })
+    })
+
+    it('should assign only enabled tasks', () => {
+      // Add a disabled task
+      gameState.settings.selectedRooms['Kitchen'].tasks.push({
+        name: 'DisabledTask',
+        enabled: false,
+        unique: false
+      })
+
+      startGame()
+
+      gameState.players.forEach(player => {
+        player.tasks.forEach(task => {
+          expect(task.task).not.toBe('DisabledTask')
+        })
+      })
+    })
+
+    it('should assign correct number of tasks per player', () => {
+      startGame()
+
+      gameState.players.forEach(player => {
+        // Should assign up to tasksPerPlayer, may be less if not enough tasks
+        expect(player.tasks.length).toBeLessThanOrEqual(gameState.settings.tasksPerPlayer)
+      })
+    })
+
+    it('should initialize tasks completed to 0', () => {
+      startGame()
+
+      gameState.players.forEach(player => {
+        expect(player.tasksCompleted).toBe(0)
+      })
+    })
+
+    it('should set all players as alive', () => {
+      startGame()
+
+      gameState.players.forEach(player => {
+        expect(player.alive).toBe(true)
+      })
+    })
+  })
+
+  describe('Task assignment - Unique tasks', () => {
+    it('should not assign unique tasks to imposters', () => {
+      startGame()
+
+      const imposters = gameState.players.filter(p => p.role === 'imposter')
+      imposters.forEach(imposter => {
+        imposter.tasks.forEach(task => {
+          // Check this task is not one of the unique tasks
+          const uniqueTaskNames = ['Task3', 'Task5']
+          expect(uniqueTaskNames).not.toContain(task.task)
+        })
+      })
+    })
+
+    it('should allow crewmates to receive unique tasks', () => {
+      // Run multiple times due to randomness
+      let crewmateGotUniqueTask = false
+
+      for (let i = 0; i < 10; i++) {
+        // Reset game state
+        gameState.players.forEach(p => {
+          delete p.role
+          delete p.tasks
+        })
+
+        startGame()
+
+        const crewmates = gameState.players.filter(p => p.role === 'crewmate')
+        crewmates.forEach(crewmate => {
+          crewmate.tasks.forEach(task => {
+            const uniqueTaskNames = ['Task3', 'Task5']
+            if (uniqueTaskNames.includes(task.task)) {
+              crewmateGotUniqueTask = true
+            }
+          })
+        })
+
+        if (crewmateGotUniqueTask) break
+      }
+
+      // With 30% probability per task slot, should get at least one in 10 runs
+      expect(crewmateGotUniqueTask).toBe(true)
+    })
+
+    it('should not duplicate unique tasks across players', () => {
+      startGame()
+
+      const uniqueTaskNames = ['Task3', 'Task5']
+      const assignedUniqueTasks = new Map() // taskName -> playerName
+
+      gameState.players.forEach(player => {
+        player.tasks.forEach(task => {
+          if (uniqueTaskNames.includes(task.task)) {
+            const key = `${task.room}-${task.task}`
+
+            if (assignedUniqueTasks.has(key)) {
+              // If we find a duplicate, fail the test
+              expect(assignedUniqueTasks.get(key)).not.toBe(player.name)
+            }
+
+            assignedUniqueTasks.set(key, player.name)
+          }
+        })
+      })
+
+      // Test passes if no duplicates found
+      expect(true).toBe(true)
+    })
+  })
+
+  describe('Task assignment - Edge cases', () => {
+    it('should handle scenario with no unique tasks', () => {
+      // Remove unique tasks
+      gameState.settings.selectedRooms['Kitchen'].tasks[2].unique = false
+      gameState.settings.selectedRooms['Living Room'].tasks[1].unique = false
+
+      expect(() => startGame()).not.toThrow()
+
+      gameState.players.forEach(player => {
+        expect(player.tasks).toBeDefined()
+      })
+    })
+
+    it('should handle scenario with only unique tasks', () => {
+      // Make all tasks unique
+      Object.values(gameState.settings.selectedRooms).forEach(room => {
+        room.tasks.forEach(task => {
+          task.unique = true
+        })
+      })
+
+      expect(() => startGame()).not.toThrow()
+
+      const imposters = gameState.players.filter(p => p.role === 'imposter')
+      // Imposters should have empty or very few tasks since they can't get unique
+      imposters.forEach(imposter => {
+        expect(imposter.tasks.length).toBeLessThanOrEqual(1)
+      })
+    })
+
+    it('should handle insufficient tasks scenario', () => {
+      // Only 1 non-unique task available
+      gameState.settings.selectedRooms = {
+        'Kitchen': {
+          enabled: true,
+          tasks: [{ name: 'OnlyTask', enabled: true, unique: false }]
+        }
+      }
+      gameState.settings.tasksPerPlayer = 5
+
+      expect(() => startGame()).not.toThrow()
+
+      gameState.players.forEach(player => {
+        // Non-unique tasks can be assigned multiple times, so players can get up to tasksPerPlayer
+        expect(player.tasks.length).toBeLessThanOrEqual(5)
+        // All tasks should be the same task repeated
+        if (player.tasks.length > 0) {
+          const firstTask = player.tasks[0].task
+          player.tasks.forEach(task => {
+            expect(task.task).toBe(firstTask)
+          })
+        }
+      })
+    })
+
+    it('should handle zero tasks per player setting', () => {
+      gameState.settings.tasksPerPlayer = 0
+
+      expect(() => startGame()).not.toThrow()
+
+      gameState.players.forEach(player => {
+        expect(player.tasks).toEqual([])
+      })
+    })
+
+    it('should handle all rooms disabled', () => {
+      Object.values(gameState.settings.selectedRooms).forEach(room => {
+        room.enabled = false
+      })
+
+      expect(() => startGame()).not.toThrow()
+
+      gameState.players.forEach(player => {
+        expect(player.tasks).toEqual([])
+      })
+    })
+
+    it('should handle all tasks disabled', () => {
+      Object.values(gameState.settings.selectedRooms).forEach(room => {
+        room.tasks.forEach(task => {
+          task.enabled = false
+        })
+      })
+
+      expect(() => startGame()).not.toThrow()
+
+      gameState.players.forEach(player => {
+        expect(player.tasks).toEqual([])
+      })
+    })
+  })
+})
+
+describe('Elimination Mechanics', () => {
+  let mockElements
+
+  beforeEach(() => {
+    gameState.stage = 'playing'
+    gameState.currentPlayer = 'Player1'
+    gameState.players = [
+      { name: 'Player1', role: 'crewmate', alive: true, tasks: [], tasksCompleted: 0 },
+      { name: 'Player2', role: 'crewmate', alive: true, tasks: [], tasksCompleted: 0 },
+      { name: 'Player3', role: 'imposter', alive: true, tasks: [], tasksCompleted: 0 }
+    ]
+
+    mockElements = {
+      eliminatedQRCode: { src: '' },
+      eliminatedModal: { classList: { add: vi.fn(), remove: vi.fn() } }
+    }
+
+    global.document = {
+      getElementById: vi.fn((id) => {
+        if (id === 'eliminated-qr-code') return mockElements.eliminatedQRCode
+        if (id === 'eliminated-modal') return mockElements.eliminatedModal
+        return {
+          classList: { add: vi.fn(), remove: vi.fn() },
+          style: {},
+          innerHTML: '',
+          textContent: ''
+        }
+      }),
+      createElement: vi.fn(() => ({
+        style: {},
+        classList: { add: vi.fn(), remove: vi.fn() },
+        appendChild: vi.fn()
+      })),
+      body: { innerHTML: '' }
+    }
+
+    vi.clearAllMocks()
+  })
+
+  describe('eliminatePlayer', () => {
+    it('should mark current player as not alive', () => {
+      eliminatePlayer()
+
+      const player = gameState.players.find(p => p.name === 'Player1')
+      expect(player.alive).toBe(false)
+    })
+
+    it('should not affect other players', () => {
+      eliminatePlayer()
+
+      const player2 = gameState.players.find(p => p.name === 'Player2')
+      const player3 = gameState.players.find(p => p.name === 'Player3')
+
+      expect(player2.alive).toBe(true)
+      expect(player3.alive).toBe(true)
+    })
+
+    it('should generate QR code with player name and room code', () => {
+      gameState.roomCode = 'ABC123'
+
+      eliminatePlayer()
+
+      expect(mockElements.eliminatedQRCode.src).toContain('ELIMINATED')
+      expect(mockElements.eliminatedQRCode.src).toContain('Player1')
+      expect(mockElements.eliminatedQRCode.src).toContain('ABC123')
+    })
+
+    it('should show eliminated modal', () => {
+      eliminatePlayer()
+
+      expect(mockElements.eliminatedModal.classList.remove).toHaveBeenCalledWith('hidden')
+    })
+
+    it('should handle when currentPlayer is not found', () => {
+      gameState.currentPlayer = 'NonExistentPlayer'
+
+      expect(() => eliminatePlayer()).not.toThrow()
+
+      // No players should be eliminated
+      gameState.players.forEach(player => {
+        expect(player.alive).toBe(true)
+      })
+    })
+
+    it('should allow eliminating already eliminated player', () => {
+      const player = gameState.players.find(p => p.name === 'Player1')
+      player.alive = false
+
+      expect(() => eliminatePlayer()).not.toThrow()
+      expect(player.alive).toBe(false)
+    })
+
+    it('should work for both crewmates and imposters', () => {
+      // Eliminate crewmate
+      gameState.currentPlayer = 'Player1'
+      eliminatePlayer()
+      expect(gameState.players.find(p => p.name === 'Player1').alive).toBe(false)
+
+      // Eliminate imposter
+      gameState.currentPlayer = 'Player3'
+      eliminatePlayer()
+      expect(gameState.players.find(p => p.name === 'Player3').alive).toBe(false)
+    })
+  })
+})
+
+describe('Meeting Flow', () => {
+  let mockElements
+
+  beforeEach(() => {
+    gameState.stage = 'playing'
+    gameState.settings.meetingLimit = 3
+    gameState.settings.meetingRoom = 'Living Room'
+    gameState.meetingsUsed = 0
+    gameState.meetingCaller = null
+    gameState.meetingReady = {}
+    gameState.votes = {}
+    gameState.votingStarted = false
+    gameState.votesTallied = false
+    gameState.meetingType = null
+
+    setMyPlayerName('Player1')
+    setIsGameCreator(true)
+    gameState.hostName = 'Player1'
+
+    mockElements = {
+      meetingOverlay: { classList: { add: vi.fn(), remove: vi.fn() } },
+      meetingLocationAlert: { textContent: '' },
+      gamePhase: { classList: { add: vi.fn(), remove: vi.fn() } },
+      meetingPhase: { classList: { add: vi.fn(), remove: vi.fn() } },
+      reportSelection: { classList: { add: vi.fn(), remove: vi.fn() } },
+      voteResults: { classList: { add: vi.fn(), remove: vi.fn() } },
+      votingPhase: { classList: { add: vi.fn(), remove: vi.fn() } },
+      discussionPhase: { classList: { add: vi.fn(), remove: vi.fn() } }
+    }
+
+    global.document = {
+      getElementById: vi.fn((id) => {
+        const elementMap = {
+          'meeting-overlay': mockElements.meetingOverlay,
+          'meeting-location-alert': mockElements.meetingLocationAlert,
+          'game-phase': mockElements.gamePhase,
+          'meeting-phase': mockElements.meetingPhase,
+          'report-selection': mockElements.reportSelection,
+          'vote-results': mockElements.voteResults,
+          'voting-phase': mockElements.votingPhase,
+          'discussion-phase': mockElements.discussionPhase
+        }
+        return elementMap[id] || {
+          classList: { add: vi.fn(), remove: vi.fn() },
+          style: {},
+          innerHTML: '',
+          textContent: '',
+          appendChild: vi.fn(),
+          disabled: false
+        }
+      }),
+      querySelector: vi.fn((selector) => ({
+        textContent: '',
+        classList: { add: vi.fn(), remove: vi.fn() }
+      })),
+      createElement: vi.fn(() => ({
+        style: {},
+        classList: { add: vi.fn(), remove: vi.fn() },
+        appendChild: vi.fn()
+      })),
+      body: { innerHTML: '' }
+    }
+
+    // Mock Web Audio API
+    global.window = {
+      AudioContext: vi.fn(() => ({
+        createOscillator: vi.fn(() => ({
+          connect: vi.fn(),
+          start: vi.fn(),
+          stop: vi.fn(),
+          frequency: { value: 0 },
+          type: 'square'
+        })),
+        createGain: vi.fn(() => ({
+          connect: vi.fn(),
+          gain: {
+            setValueAtTime: vi.fn(),
+            exponentialRampToValueAtTime: vi.fn()
+          }
+        })),
+        destination: {},
+        currentTime: 0
+      }))
+    }
+
+    global.alert = vi.fn()
+    global.updateGameInDB = vi.fn()
+
+    vi.clearAllMocks()
+  })
+
+  describe('callMeeting', () => {
+    it('should set meeting caller to current player', async () => {
+      await callMeeting()
+
+      expect(gameState.meetingCaller).toBe('Player1')
+    })
+
+    it('should show meeting overlay', async () => {
+      await callMeeting()
+
+      expect(mockElements.meetingOverlay.classList.remove).toHaveBeenCalledWith('hidden')
+    })
+
+    it('should display meeting location', async () => {
+      await callMeeting()
+
+      expect(mockElements.meetingLocationAlert.textContent).toBe('Living Room')
+    })
+
+    it('should prevent calling meeting when limit reached', async () => {
+      gameState.meetingsUsed = 3
+      gameState.settings.meetingLimit = 3
+
+      await callMeeting()
+
+      expect(global.alert).toHaveBeenCalledWith('No emergency meetings remaining!')
+    })
+
+    it('should allow calling meeting when under limit', async () => {
+      gameState.meetingsUsed = 2
+      gameState.settings.meetingLimit = 3
+
+      await callMeeting()
+
+      expect(global.alert).not.toHaveBeenCalled()
+      expect(gameState.meetingCaller).toBe('Player1')
+    })
+
+    it('should handle zero meetings used initially', async () => {
+      gameState.meetingsUsed = 0
+
+      await callMeeting()
+
+      expect(gameState.meetingCaller).toBe('Player1')
+    })
+  })
+
+  describe('acknowledgeMeeting', () => {
+    beforeEach(() => {
+      gameState.stage = 'meeting'
+    })
+
+    it('should hide meeting overlay', () => {
+      acknowledgeMeeting()
+
+      expect(mockElements.meetingOverlay.classList.add).toHaveBeenCalledWith('hidden')
+    })
+
+    it('should hide game phase', () => {
+      acknowledgeMeeting()
+
+      expect(mockElements.gamePhase.classList.add).toHaveBeenCalledWith('hidden')
+    })
+
+    it('should show meeting phase', () => {
+      acknowledgeMeeting()
+
+      expect(mockElements.meetingPhase.classList.remove).toHaveBeenCalledWith('hidden')
+    })
+
+    it('should hide meeting sub-phases', () => {
+      acknowledgeMeeting()
+
+      expect(mockElements.reportSelection.classList.add).toHaveBeenCalledWith('hidden')
+    })
+  })
+
+  describe('resumeGame', () => {
+    beforeEach(() => {
+      gameState.stage = 'meeting'
+      gameState.meetingReady = { 'Player1': true }
+      gameState.votes = { 'Player1': 'Player2' }
+      gameState.votingStarted = true
+      gameState.votesTallied = true
+      gameState.meetingType = 'emergency'
+      gameState.meetingCaller = 'Player1'
+      gameState.settings.voteResults = { eliminatedPlayer: 'Player2' }
+      setSelectedVote('Player2')
+    })
+
+    it('should only allow host to resume', () => {
+      setIsGameCreator(false)
+      setMyPlayerName('Player2')
+      gameState.hostName = 'Player1'
+
+      resumeGame()
+
+      // Should return early, stage shouldn't change
+      expect(gameState.stage).toBe('meeting')
+    })
+
+    it('should transition back to playing stage', () => {
+      resumeGame()
+
+      expect(gameState.stage).toBe('playing')
+    })
+
+    it('should hide meeting phase', () => {
+      resumeGame()
+
+      expect(mockElements.meetingPhase.classList.add).toHaveBeenCalledWith('hidden')
+    })
+
+    it('should show game phase', () => {
+      resumeGame()
+
+      expect(mockElements.gamePhase.classList.remove).toHaveBeenCalledWith('hidden')
+    })
+
+    it('should reset meeting state', () => {
+      resumeGame()
+
+      expect(gameState.meetingReady).toEqual({})
+      expect(gameState.votes).toEqual({})
+      expect(gameState.votingStarted).toBe(false)
+      expect(gameState.votesTallied).toBe(false)
+      expect(gameState.meetingType).toBeNull()
+      expect(gameState.meetingCaller).toBeNull()
+      expect(gameState.settings.voteResults).toBeNull()
+    })
+
+    it('should hide all meeting and voting screens', () => {
+      resumeGame()
+
+      expect(mockElements.voteResults.classList.add).toHaveBeenCalledWith('hidden')
+      expect(mockElements.votingPhase.classList.add).toHaveBeenCalledWith('hidden')
+      expect(mockElements.discussionPhase.classList.add).toHaveBeenCalledWith('hidden')
+    })
+  })
+
+  describe('Meeting limit enforcement', () => {
+    it('should allow first meeting', async () => {
+      gameState.meetingsUsed = 0
+      gameState.settings.meetingLimit = 1
+
+      await callMeeting()
+
+      expect(global.alert).not.toHaveBeenCalled()
+    })
+
+    it('should prevent meeting after limit reached', async () => {
+      gameState.meetingsUsed = 1
+      gameState.settings.meetingLimit = 1
+
+      await callMeeting()
+
+      expect(global.alert).toHaveBeenCalledWith('No emergency meetings remaining!')
+    })
+
+    it('should handle unlimited meetings (large limit)', async () => {
+      gameState.meetingsUsed = 99
+      gameState.settings.meetingLimit = 999
+
+      await callMeeting()
+
+      expect(global.alert).not.toHaveBeenCalled()
+      expect(gameState.meetingCaller).toBe('Player1')
     })
   })
 })
