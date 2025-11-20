@@ -1,6 +1,6 @@
 # Supabase Setup Guide
 
-This guide will walk you through setting up Supabase for real-time multi-device synchronization in your Among Us IRL game.
+This guide will walk you through setting up Supabase for real-time multi-device synchronization in your Traitors and Allies game.
 
 ## Step 1: Create a Supabase Project
 
@@ -9,7 +9,7 @@ This guide will walk you through setting up Supabase for real-time multi-device 
 3. Create a new account or sign in with GitHub
 4. Click "New Project"
 5. Fill in the details:
-   - **Project name**: Among Us IRL (or your choice)
+   - **Project name**: Traitors and Allies (or your choice)
    - **Database password**: Choose a strong password (save this!)
    - **Region**: Choose closest to your location
    - **Pricing plan**: Free tier is sufficient for most use cases
@@ -154,7 +154,7 @@ For a party game, you'll likely never hit these limits!
 Once Supabase is set up and working:
 1. Deploy your updated `index.html` to Vercel
 2. Share the URL with the room code to let others join
-3. Enjoy real-time multiplayer Among Us IRL!
+3. Enjoy real-time multiplayer Traitors and Allies!
 
 ## Need Help?
 

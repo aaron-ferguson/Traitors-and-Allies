@@ -70,7 +70,7 @@ document.getElementById('room-code').textContent = roomCode;
 // Update displays
 document.getElementById('min-players-display').textContent = gameState.settings.minPlayers;
 document.getElementById('max-players-display').textContent = gameState.settings.maxPlayers;
-document.getElementById('imposter-count-display').textContent = gameState.settings.imposterCount;
+document.getElementById('traitor-count-display').textContent = gameState.settings.traitorCount;
 
 // Generate QR code
 generateQRCode();
@@ -104,7 +104,7 @@ settings: {
 minPlayers: 4,
 maxPlayers: 10,
 tasksPerPlayer: 3,
-imposterCount: 1,
+traitorCount: 1,
 eliminationCooldown: 30,
 cooldownReduction: 5,
 meetingRoom: '',
@@ -171,7 +171,7 @@ async function createGame() {
 gameState.settings.minPlayers = parseInt(document.getElementById('min-players').value);
 gameState.settings.maxPlayers = parseInt(document.getElementById('max-players').value);
 gameState.settings.tasksPerPlayer = parseInt(document.getElementById('tasks-per-player').value);
-gameState.settings.imposterCount = parseInt(document.getElementById('imposter-count').value);
+gameState.settings.traitorCount = parseInt(document.getElementById('traitor-count').value);
 gameState.settings.eliminationCooldown = parseInt(document.getElementById('elimination-cooldown').value);
 gameState.settings.cooldownReduction = parseInt(document.getElementById('cooldown-reduction').value);
 gameState.settings.meetingRoom = document.getElementById('meeting-room').value;
@@ -185,13 +185,13 @@ alert('Minimum players cannot be greater than maximum players!');
 return;
 }
 
-if (gameState.settings.imposterCount < 1) {
-alert('There must be at least 1 imposter!');
+if (gameState.settings.traitorCount < 1) {
+alert('There must be at least 1 traitor!');
 return;
 }
 
-if (gameState.settings.imposterCount >= gameState.settings.maxPlayers) {
-alert('Number of imposters must be less than maximum players!');
+if (gameState.settings.traitorCount >= gameState.settings.maxPlayers) {
+alert('Number of traitors must be less than maximum players!');
 return;
 }
 
@@ -211,7 +211,7 @@ document.getElementById('room-code').textContent = gameState.roomCode;
 // Update displays
 document.getElementById('min-players-display').textContent = gameState.settings.minPlayers;
 document.getElementById('max-players-display').textContent = gameState.settings.maxPlayers;
-document.getElementById('imposter-count-display').textContent = gameState.settings.imposterCount;
+document.getElementById('traitor-count-display').textContent = gameState.settings.traitorCount;
 
 // Switch to waiting room
 gameState.stage = 'waiting';
@@ -593,20 +593,20 @@ alert('Only the host can start the game!');
 return;
 }
 
-// Validate imposter count
-if (gameState.settings.imposterCount < 1) {
-alert('Cannot start game: There must be at least 1 imposter!');
+// Validate traitor count
+if (gameState.settings.traitorCount < 1) {
+alert('Cannot start game: There must be at least 1 traitor!');
 return;
 }
 
-if (gameState.settings.imposterCount >= gameState.players.length) {
-alert('Cannot start game: Number of imposters must be less than total players!');
+if (gameState.settings.traitorCount >= gameState.players.length) {
+alert('Cannot start game: Number of traitors must be less than total players!');
 return;
 }
 
 // Assign roles
 const shuffled = [...gameState.players].sort(() => Math.random() - 0.5);
-const imposterNames = shuffled.slice(0, gameState.settings.imposterCount).map(p => p.name);
+const traitorNames = shuffled.slice(0, gameState.settings.traitorCount).map(p => p.name);
 
 // Collect all enabled tasks from selected rooms
 const allTasks = [];
@@ -630,13 +630,13 @@ allTasks.push(taskObj);
 
 // Assign tasks to players
 gameState.players.forEach(player => {
-player.role = imposterNames.includes(player.name) ? 'imposter' : 'crewmate';
+player.role = traitorNames.includes(player.name) ? 'traitor' : 'ally';
 player.alive = true;
 player.tasksCompleted = 0;
 
 // Assign tasks based on role
 const assignedTasks = [];
-const isImposter = player.role === 'imposter';
+const isTraitor = player.role === 'traitor';
 
 // Track which tasks and rooms have been used for this player
 const usedTasks = new Set(); // Track task names to avoid duplicates
@@ -644,7 +644,7 @@ const usedRooms = new Set(); // Track rooms to prefer distinct rooms
 
 // Create pools for this player
 const availableNonUnique = [...allTasks];
-const availableUnique = isImposter ? [] : [...uniqueTasks];
+const availableUnique = isTraitor ? [] : [...uniqueTasks];
 
 // Shuffle available tasks for randomness
 availableNonUnique.sort(() => Math.random() - 0.5);
@@ -663,7 +663,7 @@ tasksByRoom[task.room].push(task);
 for (let i = 0; i < gameState.settings.tasksPerPlayer; i++) {
 let taskAssigned = false;
 
-// Try to assign unique task first (crewmates only, 30% chance)
+// Try to assign unique task first (allies only, 30% chance)
 if (availableUnique.length > 0 && Math.random() < 0.3) {
 // Find a unique task that hasn't been used
 for (let j = 0; j < availableUnique.length; j++) {
@@ -768,7 +768,7 @@ if (!player) return;
 const roleText = player.role.charAt(0).toUpperCase() + player.role.slice(1);
 document.getElementById('role-text').textContent = roleText;
 // Both roles use the same color class to avoid visual giveaways
-document.getElementById('role-text').className = 'role-revealed role-crewmate';
+document.getElementById('role-text').className = 'role-revealed role-ally';
 
 // Set player status text
 const statusText = player.alive ? 'Alive' : 'Eliminated';
@@ -828,7 +828,7 @@ checkbox.id = `task-${index}`;
 checkbox.style.cssText = 'margin-right: 10px; width: 18px; height: 18px; cursor: pointer;';
 checkbox.checked = index < (player.tasksCompleted || 0);
 
-// Only allow crewmates to actually complete tasks (imposters' checks are cosmetic)
+// Only allow allies to actually complete tasks (traitors' checks are cosmetic)
 checkbox.onchange = () => toggleTaskComplete(index);
 
 const label = document.createElement('label');
@@ -859,8 +859,8 @@ player.tasksCompleted = Math.max((player.tasksCompleted || 0) - 1, 0);
 // Update the count display
 document.getElementById('completed-tasks-count').textContent = player.tasksCompleted;
 
-// Only update database for crewmates (imposters' tasks are dummy)
-if (player.role === 'crewmate') {
+// Only update database for allies (traitors' tasks are dummy)
+if (player.role === 'ally') {
 // Update player in database
 if (supabaseClient && currentGameId) {
 updatePlayerInDB(player.name, {
@@ -868,27 +868,27 @@ tasks_completed: player.tasksCompleted
 });
 }
 
-// Check if crewmates won
-checkCrewmateVictory();
+// Check if allies won
+checkAllyVictory();
 }
 }
 
-function checkCrewmateVictory() {
-// Count total tasks and completed tasks for ALL crewmates (including eliminated)
-// Eliminated crewmates' completed tasks still count toward victory
-let totalCrewmateTasks = 0;
-let completedCrewmateTasks = 0;
+function checkAllyVictory() {
+// Count total tasks and completed tasks for ALL allies (including eliminated)
+// Eliminated allies' completed tasks still count toward victory
+let totalAllyTasks = 0;
+let completedAllyTasks = 0;
 
 gameState.players.forEach(player => {
-if (player.role === 'crewmate') {
-totalCrewmateTasks += player.tasks.length;
-completedCrewmateTasks += player.tasksCompleted || 0;
+if (player.role === 'ally') {
+totalAllyTasks += player.tasks.length;
+completedAllyTasks += player.tasksCompleted || 0;
 }
 });
 
 // Check if all tasks are completed
-if (totalCrewmateTasks > 0 && completedCrewmateTasks >= totalCrewmateTasks) {
-endGame('crewmates', 'All tasks completed!');
+if (totalAllyTasks > 0 && completedAllyTasks >= totalAllyTasks) {
+endGame('allies', 'All tasks completed!');
 }
 }
 
@@ -1528,7 +1528,7 @@ ejectedText.textContent = 'It was a tie. No one was ejected.';
 } else if (eliminatedPlayer) {
 const player = gameState.players.find(p => p.name === eliminatedPlayer);
 const role = player?.role || 'unknown';
-ejectedText.textContent = `${eliminatedPlayer} was ejected. They were ${role === 'imposter' ? 'an Imposter' : 'a Crewmate'}.`;
+ejectedText.textContent = `${eliminatedPlayer} was ejected. They were ${role === 'traitor' ? 'an Traitor' : 'a Ally'}.`;
 } else {
 ejectedText.textContent = 'No one was ejected.';
 }
@@ -1579,32 +1579,32 @@ p.alive = true;
 });
 
 const alivePlayers = gameState.players.filter(p => p.alive === true);
-const aliveImposters = alivePlayers.filter(p => p.role === 'imposter').length;
-const aliveCrewmates = alivePlayers.filter(p => p.role === 'crewmate').length;
-const totalImposters = gameState.players.filter(p => p.role === 'imposter').length;
-const totalCrewmates = gameState.players.filter(p => p.role === 'crewmate').length;
+const aliveTraitors = alivePlayers.filter(p => p.role === 'traitor').length;
+const aliveAllies = alivePlayers.filter(p => p.role === 'ally').length;
+const totalTraitors = gameState.players.filter(p => p.role === 'traitor').length;
+const totalAllies = gameState.players.filter(p => p.role === 'ally').length;
 
 console.log('=== Win Condition Check ===');
-console.log(`Alive imposters: ${aliveImposters}/${totalImposters}`);
-console.log(`Alive crewmates: ${aliveCrewmates}/${totalCrewmates}`);
+console.log(`Alive traitors: ${aliveTraitors}/${totalTraitors}`);
+console.log(`Alive allies: ${aliveAllies}/${totalAllies}`);
 console.log(`All players:`, gameState.players.map(p => ({ name: p.name, role: p.role, alive: p.alive })));
 
-// Error check: Game malfunction if no imposters existed
-if (totalImposters === 0) {
-console.error('ERROR: Game started with no imposters - this should never happen!');
-throw new Error('Game malfunction: No imposters were assigned at game start');
+// Error check: Game malfunction if no traitors existed
+if (totalTraitors === 0) {
+console.error('ERROR: Game started with no traitors - this should never happen!');
+throw new Error('Game malfunction: No traitors were assigned at game start');
 }
 
-// Crewmates win if all imposters are eliminated (and there were imposters to begin with)
-if (aliveImposters === 0 && totalImposters > 0) {
-console.log('WIN CONDITION: Crewmates win - all imposters eliminated');
-return { winner: 'crewmates', reason: 'All imposters eliminated' };
+// Allies win if all traitors are eliminated (and there were traitors to begin with)
+if (aliveTraitors === 0 && totalTraitors > 0) {
+console.log('WIN CONDITION: Allies win - all traitors eliminated');
+return { winner: 'allies', reason: 'All traitors eliminated' };
 }
 
-// Imposters win if they equal or outnumber crewmates (and there are crewmates to outnumber)
-if (aliveImposters >= aliveCrewmates && aliveCrewmates > 0 && aliveImposters > 0) {
-console.log('WIN CONDITION: Imposters win - equal or outnumber crewmates');
-return { winner: 'imposters', reason: 'Imposters equal or outnumber crewmates' };
+// Traitors win if they equal or outnumber allies (and there are allies to outnumber)
+if (aliveTraitors >= aliveAllies && aliveAllies > 0 && aliveTraitors > 0) {
+console.log('WIN CONDITION: Traitors win - equal or outnumber allies');
+return { winner: 'traitors', reason: 'Traitors equal or outnumber allies' };
 }
 
 console.log('WIN CONDITION: None met, game continues');
@@ -1674,9 +1674,9 @@ document.getElementById('game-end').classList.remove('hidden');
 const player = gameState.players.find(p => p.name === myPlayerName);
 const playerRole = player ? player.role : null;
 
-// Crewmates win if winner is 'crewmates', imposters win if winner is 'imposters'
-const didPlayerWin = (playerRole === 'crewmate' && winner === 'crewmates') ||
-(playerRole === 'imposter' && winner === 'imposters');
+// Allies win if winner is 'allies', traitors win if winner is 'traitors'
+const didPlayerWin = (playerRole === 'ally' && winner === 'allies') ||
+(playerRole === 'traitor' && winner === 'traitors');
 
 // Show appropriate screen
 if (didPlayerWin) {
@@ -1709,37 +1709,37 @@ const summaryDiv = document.getElementById('game-summary');
 const winningTeam = document.getElementById('winning-team');
 
 // Set winning team text (normal color, not red or green)
-if (gameState.winner === 'crewmates') {
-winningTeam.textContent = 'Crewmates Win!';
+if (gameState.winner === 'allies') {
+winningTeam.textContent = 'Allies Win!';
 winningTeam.style.color = '#ffffff';
-} else if (gameState.winner === 'imposters') {
-winningTeam.textContent = 'Imposters Win!';
+} else if (gameState.winner === 'traitors') {
+winningTeam.textContent = 'Traitors Win!';
 winningTeam.style.color = '#ffffff';
 }
 
 // Separate players by role
-const crewmates = gameState.players.filter(p => p.role === 'crewmate');
-const imposters = gameState.players.filter(p => p.role === 'imposter');
+const allies = gameState.players.filter(p => p.role === 'ally');
+const traitors = gameState.players.filter(p => p.role === 'traitor');
 
-// Calculate total crewmate tasks
-const totalCrewmateTasks = crewmates.reduce((total, player) => {
+// Calculate total ally tasks
+const totalAllyTasks = allies.reduce((total, player) => {
 return total + (player.tasksCompleted || 0);
 }, 0);
-const maxCrewmateTasks = crewmates.reduce((total, player) => {
+const maxAllyTasks = allies.reduce((total, player) => {
 return total + (player.tasks ? player.tasks.length : 0);
 }, 0);
 
 // Build summary HTML
 summaryDiv.innerHTML = '';
 
-// Crewmates Section
-const crewmatesSection = document.createElement('div');
-crewmatesSection.style.cssText = 'margin-bottom: 30px;';
-crewmatesSection.innerHTML = `
-<h3 style="color: #5eb3f6; margin-bottom: 15px;">Crewmates (${totalCrewmateTasks}/${maxCrewmateTasks} tasks completed)</h3>
+// Allies Section
+const alliesSection = document.createElement('div');
+alliesSection.style.cssText = 'margin-bottom: 30px;';
+alliesSection.innerHTML = `
+<h3 style="color: #5eb3f6; margin-bottom: 15px;">Allies (${totalAllyTasks}/${maxAllyTasks} tasks completed)</h3>
 `;
 
-crewmates.forEach(player => {
+allies.forEach(player => {
 const playerCard = document.createElement('div');
 playerCard.style.cssText = 'background: rgba(255,255,255,0.05); padding: 15px; margin-bottom: 10px; border-radius: 8px;';
 
@@ -1767,18 +1767,18 @@ playerCard.innerHTML = `
 ${tasksHTML}
 `;
 
-crewmatesSection.appendChild(playerCard);
+alliesSection.appendChild(playerCard);
 });
 
-summaryDiv.appendChild(crewmatesSection);
+summaryDiv.appendChild(alliesSection);
 
-// Imposters Section
-const impostersSection = document.createElement('div');
-impostersSection.innerHTML = `
-<h3 style="color: #5eb3f6; margin-bottom: 15px;">Imposters</h3>
+// Traitors Section
+const traitorsSection = document.createElement('div');
+traitorsSection.innerHTML = `
+<h3 style="color: #5eb3f6; margin-bottom: 15px;">Traitors</h3>
 `;
 
-imposters.forEach(player => {
+traitors.forEach(player => {
 const playerCard = document.createElement('div');
 playerCard.style.cssText = 'background: rgba(255,255,255,0.05); padding: 15px; margin-bottom: 10px; border-radius: 8px;';
 
@@ -1791,10 +1791,10 @@ playerCard.innerHTML = `
 <div style="color: #a0a0a0; font-size: 0.9rem;">${statusText}</div>
 `;
 
-impostersSection.appendChild(playerCard);
+traitorsSection.appendChild(playerCard);
 });
 
-summaryDiv.appendChild(impostersSection);
+summaryDiv.appendChild(traitorsSection);
 }
 
 function closeVictoryScreen() {
@@ -1892,7 +1892,7 @@ document.getElementById('room-code').textContent = newRoomCode;
 // Update displays
 document.getElementById('min-players-display').textContent = gameState.settings.minPlayers;
 document.getElementById('max-players-display').textContent = gameState.settings.maxPlayers;
-document.getElementById('imposter-count-display').textContent = gameState.settings.imposterCount;
+document.getElementById('traitor-count-display').textContent = gameState.settings.traitorCount;
 
 // Generate QR code for new session
 generateQRCode();
@@ -2202,7 +2202,7 @@ export {
   displayVoteResults,
   resumeGame,
   checkWinConditions,
-  checkCrewmateVictory,
+  checkAllyVictory,
   endGame,
   populateGameSummary,
   closeVictoryScreen,

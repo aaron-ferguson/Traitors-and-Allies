@@ -16,7 +16,7 @@ import {
   tallyVotes,
   displayVoteResults,
   checkWinConditions,
-  checkCrewmateVictory,
+  checkAllyVictory,
   endGame,
   eliminatePlayer,
   callMeeting,
@@ -176,7 +176,7 @@ describe('QR Code Integration with Game Sessions', () => {
       minPlayers: { value: '4' },
       maxPlayers: { value: '10' },
       tasksPerPlayer: { value: '3' },
-      imposterCount: { value: '2' },
+      traitorCount: { value: '2' },
       eliminationCooldown: { value: '30' },
       cooldownReduction: { value: '5' },
       meetingRoom: { value: 'Living Room' },
@@ -185,7 +185,7 @@ describe('QR Code Integration with Game Sessions', () => {
       additionalRules: { value: '' },
       minPlayersDisplay: { textContent: '' },
       maxPlayersDisplay: { textContent: '' },
-      imposterCountDisplay: { textContent: '' },
+      traitorCountDisplay: { textContent: '' },
       setupPhase: { classList: { add: vi.fn(), remove: vi.fn() } },
       waitingRoom: { classList: { add: vi.fn(), remove: vi.fn() } },
       roomCode: { textContent: '' },
@@ -201,7 +201,7 @@ describe('QR Code Integration with Game Sessions', () => {
           'min-players': mockElements.minPlayers,
           'max-players': mockElements.maxPlayers,
           'tasks-per-player': mockElements.tasksPerPlayer,
-          'imposter-count': mockElements.imposterCount,
+          'traitor-count': mockElements.traitorCount,
           'elimination-cooldown': mockElements.eliminationCooldown,
           'cooldown-reduction': mockElements.cooldownReduction,
           'meeting-room': mockElements.meetingRoom,
@@ -210,7 +210,7 @@ describe('QR Code Integration with Game Sessions', () => {
           'additional-rules': mockElements.additionalRules,
           'min-players-display': mockElements.minPlayersDisplay,
           'max-players-display': mockElements.maxPlayersDisplay,
-          'imposter-count-display': mockElements.imposterCountDisplay,
+          'traitor-count-display': mockElements.traitorCountDisplay,
           'setup-phase': mockElements.setupPhase,
           'waiting-room': mockElements.waitingRoom,
           'room-code': mockElements.roomCode,
@@ -273,39 +273,39 @@ describe('Win Condition Checks', () => {
   })
 
   describe('checkWinConditions', () => {
-    it('should return crewmates win when all imposters are eliminated', () => {
+    it('should return allies win when all traitors are eliminated', () => {
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: true },
-        { name: 'Player2', role: 'crewmate', alive: true },
-        { name: 'Imposter1', role: 'imposter', alive: false }
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'ally', alive: true },
+        { name: 'Traitor1', role: 'traitor', alive: false }
       ]
 
       const result = checkWinConditions()
 
       expect(result).toBeDefined()
-      expect(result.winner).toBe('crewmates')
-      expect(result.reason).toBe('All imposters eliminated')
+      expect(result.winner).toBe('allies')
+      expect(result.reason).toBe('All traitors eliminated')
     })
 
-    it('should return imposters win when they equal crewmates', () => {
+    it('should return traitors win when they equal allies', () => {
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: true },
-        { name: 'Player2', role: 'crewmate', alive: false },
-        { name: 'Imposter1', role: 'imposter', alive: true }
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'ally', alive: false },
+        { name: 'Traitor1', role: 'traitor', alive: true }
       ]
 
       const result = checkWinConditions()
 
       expect(result).toBeDefined()
-      expect(result.winner).toBe('imposters')
-      expect(result.reason).toBe('Imposters equal or outnumber crewmates')
+      expect(result.winner).toBe('traitors')
+      expect(result.reason).toBe('Traitors equal or outnumber allies')
     })
 
     it('should return null when game is still in progress', () => {
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: true },
-        { name: 'Player2', role: 'crewmate', alive: true },
-        { name: 'Imposter1', role: 'imposter', alive: true }
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'ally', alive: true },
+        { name: 'Traitor1', role: 'traitor', alive: true }
       ]
 
       const result = checkWinConditions()
@@ -315,9 +315,9 @@ describe('Win Condition Checks', () => {
 
     it('should handle undefined alive status by defaulting to true', () => {
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: undefined },
-        { name: 'Player2', role: 'crewmate', alive: null },
-        { name: 'Imposter1', role: 'imposter', alive: false }
+        { name: 'Player1', role: 'ally', alive: undefined },
+        { name: 'Player2', role: 'ally', alive: null },
+        { name: 'Traitor1', role: 'traitor', alive: false }
       ]
 
       const result = checkWinConditions()
@@ -326,21 +326,21 @@ describe('Win Condition Checks', () => {
       expect(gameState.players[0].alive).toBe(true)
       expect(gameState.players[1].alive).toBe(true)
 
-      // Crewmates should win since imposter is dead
-      expect(result.winner).toBe('crewmates')
+      // Allies should win since traitor is dead
+      expect(result.winner).toBe('allies')
     })
 
-    it('should throw error if no imposters existed (game malfunction)', () => {
+    it('should throw error if no traitors existed (game malfunction)', () => {
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: true },
-        { name: 'Player2', role: 'crewmate', alive: true }
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'ally', alive: true }
       ]
 
-      expect(() => checkWinConditions()).toThrow('Game malfunction: No imposters were assigned at game start')
+      expect(() => checkWinConditions()).toThrow('Game malfunction: No traitors were assigned at game start')
     })
   })
 
-  describe('checkCrewmateVictory', () => {
+  describe('checkAllyVictory', () => {
     beforeEach(() => {
       // Reset game ended state
       gameState.gameEnded = false
@@ -354,21 +354,21 @@ describe('Win Condition Checks', () => {
       gameState.players = [
         {
           name: 'Player1',
-          role: 'crewmate',
+          role: 'ally',
           alive: true,
           tasks: ['Task1', 'Task2'],
           tasksCompleted: 1
         },
         {
           name: 'Player2',
-          role: 'crewmate',
+          role: 'ally',
           alive: true,
           tasks: ['Task3', 'Task4'],
           tasksCompleted: 1
         }
       ]
 
-      checkCrewmateVictory()
+      checkAllyVictory()
 
       // Should not end game when tasks incomplete
       expect(gameState.gameEnded).toBe(false)
@@ -402,75 +402,75 @@ describe('Win Condition Checks', () => {
       gameState.players = [
         {
           name: 'Player1',
-          role: 'crewmate',
+          role: 'ally',
           alive: true,
           tasks: ['Task1', 'Task2'],
           tasksCompleted: 2
         },
         {
           name: 'Player2',
-          role: 'crewmate',
+          role: 'ally',
           alive: true,
           tasks: ['Task3', 'Task4'],
           tasksCompleted: 2
         },
         {
           name: 'Player3',
-          role: 'crewmate',
+          role: 'ally',
           alive: false, // Eliminated player
           tasks: ['Task5', 'Task6'],
           tasksCompleted: 2 // All tasks complete
         },
         {
-          name: 'Imposter1',
-          role: 'imposter',
+          name: 'Traitor1',
+          role: 'traitor',
           alive: true,
           tasks: [],
           tasksCompleted: 0
         }
       ]
 
-      checkCrewmateVictory()
+      checkAllyVictory()
 
       // Restore original document
       global.document = originalDocument
 
-      // Verify game ended with crewmates winning
-      // All 6 crewmate tasks complete (including eliminated player's tasks)
+      // Verify game ended with allies winning
+      // All 6 ally tasks complete (including eliminated player's tasks)
       expect(gameState.gameEnded).toBe(true)
-      expect(gameState.winner).toBe('crewmates')
+      expect(gameState.winner).toBe('allies')
       expect(gameState.stage).toBe('ended')
     })
 
-    it('should count ALL crewmates tasks (including eliminated players)', () => {
+    it('should count ALL allies tasks (including eliminated players)', () => {
       gameState.players = [
         {
           name: 'Player1',
-          role: 'crewmate',
+          role: 'ally',
           alive: true,
           tasks: ['Task1', 'Task2', 'Task3'],
           tasksCompleted: 2 // Not all tasks complete
         },
         {
           name: 'Player2',
-          role: 'crewmate',
+          role: 'ally',
           alive: false, // Eliminated player
           tasks: ['Task4', 'Task5'],
           tasksCompleted: 0 // Incomplete tasks
         },
         {
-          name: 'Imposter1',
-          role: 'imposter',
+          name: 'Traitor1',
+          role: 'traitor',
           alive: true,
           tasks: [],
           tasksCompleted: 0
         }
       ]
 
-      checkCrewmateVictory()
+      checkAllyVictory()
 
-      // Should not end game - only 2/5 total crewmate tasks complete
-      // Both alive AND eliminated crewmates' tasks count toward total
+      // Should not end game - only 2/5 total ally tasks complete
+      // Both alive AND eliminated allies' tasks count toward total
       expect(gameState.gameEnded).toBe(false)
       expect(gameState.winner).toBeNull()
     })
@@ -580,7 +580,7 @@ describe('Player Management', () => {
       const existingPlayer = {
         name: 'ExistingPlayer',
         ready: false,
-        role: 'crewmate',
+        role: 'ally',
         tasks: ['Task1'],
         alive: true,
         tasksCompleted: 0
@@ -600,7 +600,7 @@ describe('Player Management', () => {
       const existingPlayer = {
         name: 'ExistingPlayer',
         ready: false,
-        role: 'crewmate',
+        role: 'ally',
         tasks: ['Task1'],
         alive: true,
         tasksCompleted: 0
@@ -760,7 +760,7 @@ describe('Game State Transitions', () => {
     gameState.players = []
     gameState.settings.minPlayers = 4
     gameState.settings.maxPlayers = 10
-    gameState.settings.imposterCount = 1
+    gameState.settings.traitorCount = 1
     gameState.settings.tasksPerPlayer = 3
     gameState.settings.selectedRooms = {
       'Living Room': {
@@ -843,11 +843,11 @@ describe('Game State Transitions', () => {
     it('should assign roles when transitioning to playing', () => {
       startGame()
 
-      const imposters = gameState.players.filter(p => p.role === 'imposter')
-      const crewmates = gameState.players.filter(p => p.role === 'crewmate')
+      const traitors = gameState.players.filter(p => p.role === 'traitor')
+      const allies = gameState.players.filter(p => p.role === 'ally')
 
-      expect(imposters.length).toBe(gameState.settings.imposterCount)
-      expect(crewmates.length).toBe(gameState.players.length - gameState.settings.imposterCount)
+      expect(traitors.length).toBe(gameState.settings.traitorCount)
+      expect(allies.length).toBe(gameState.players.length - gameState.settings.traitorCount)
     })
 
     it('should assign tasks to all players when starting game', () => {
@@ -856,8 +856,8 @@ describe('Game State Transitions', () => {
       gameState.players.forEach(player => {
         expect(player.tasks).toBeDefined()
         expect(Array.isArray(player.tasks)).toBe(true)
-        // Crewmates should have tasks assigned
-        if (player.role === 'crewmate') {
+        // Allies should have tasks assigned
+        if (player.role === 'ally') {
           expect(player.tasks.length).toBeGreaterThan(0)
         }
       })
@@ -882,21 +882,21 @@ describe('Game State Transitions', () => {
       expect(gameState.stage).toBe('waiting')
     })
 
-    it('should prevent starting with invalid imposter count', () => {
-      gameState.settings.imposterCount = 0
+    it('should prevent starting with invalid traitor count', () => {
+      gameState.settings.traitorCount = 0
 
       startGame()
 
-      expect(global.alert).toHaveBeenCalledWith('Cannot start game: There must be at least 1 imposter!')
+      expect(global.alert).toHaveBeenCalledWith('Cannot start game: There must be at least 1 traitor!')
       expect(gameState.stage).toBe('waiting')
     })
 
-    it('should prevent starting when imposters >= total players', () => {
-      gameState.settings.imposterCount = 4
+    it('should prevent starting when traitors >= total players', () => {
+      gameState.settings.traitorCount = 4
 
       startGame()
 
-      expect(global.alert).toHaveBeenCalledWith('Cannot start game: Number of imposters must be less than total players!')
+      expect(global.alert).toHaveBeenCalledWith('Cannot start game: Number of traitors must be less than total players!')
       expect(gameState.stage).toBe('waiting')
     })
   })
@@ -904,45 +904,45 @@ describe('Game State Transitions', () => {
   describe('any -> ended transition', () => {
     beforeEach(() => {
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: true },
-        { name: 'Player2', role: 'crewmate', alive: false },
-        { name: 'Imposter1', role: 'imposter', alive: false }
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'ally', alive: false },
+        { name: 'Traitor1', role: 'traitor', alive: false }
       ]
     })
 
     it('should transition from playing to ended when game ends', () => {
       gameState.stage = 'playing'
 
-      endGame('crewmates', 'All imposters eliminated')
+      endGame('allies', 'All traitors eliminated')
 
       expect(gameState.stage).toBe('ended')
       expect(gameState.gameEnded).toBe(true)
-      expect(gameState.winner).toBe('crewmates')
+      expect(gameState.winner).toBe('allies')
     })
 
     it('should transition from meeting to ended when game ends', () => {
       gameState.stage = 'meeting'
 
-      endGame('imposters', 'Imposters outnumber crewmates')
+      endGame('traitors', 'Traitors outnumber allies')
 
       expect(gameState.stage).toBe('ended')
       expect(gameState.gameEnded).toBe(true)
-      expect(gameState.winner).toBe('imposters')
+      expect(gameState.winner).toBe('traitors')
     })
 
     it('should set gameEnded flag when ending game', () => {
       gameState.stage = 'playing'
       gameState.gameEnded = false
 
-      endGame('crewmates', 'All tasks completed')
+      endGame('allies', 'All tasks completed')
 
       expect(gameState.gameEnded).toBe(true)
     })
 
     it('should store winner when game ends', () => {
-      endGame('crewmates', 'Victory!')
+      endGame('allies', 'Victory!')
 
-      expect(gameState.winner).toBe('crewmates')
+      expect(gameState.winner).toBe('allies')
     })
   })
 
@@ -978,11 +978,11 @@ describe('Game State Transitions', () => {
       gameState.roomCode = 'ABC123'
       gameState.hostName = 'Host'
       gameState.players = [
-        { name: 'Player1', role: 'crewmate' },
-        { name: 'Player2', role: 'imposter' }
+        { name: 'Player1', role: 'ally' },
+        { name: 'Player2', role: 'traitor' }
       ]
       gameState.gameEnded = true
-      gameState.winner = 'crewmates'
+      gameState.winner = 'allies'
 
       returnToMenu()
 
@@ -1037,7 +1037,7 @@ describe('Game State Transitions', () => {
       expect(validStages).toContain(gameState.stage)
 
       // Test that endGame sets a valid stage
-      endGame('crewmates', 'Victory')
+      endGame('allies', 'Victory')
       expect(validStages).toContain(gameState.stage)
 
       // Test that returnToMenu sets a valid stage
@@ -1089,10 +1089,10 @@ describe('Voting Logic', () => {
         'Player4': 'Player1'
       }
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: true },
-        { name: 'Player2', role: 'crewmate', alive: true },
-        { name: 'Player3', role: 'imposter', alive: true },
-        { name: 'Player4', role: 'crewmate', alive: true }
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'ally', alive: true },
+        { name: 'Player3', role: 'traitor', alive: true },
+        { name: 'Player4', role: 'ally', alive: true }
       ]
 
       await tallyVotes()
@@ -1111,10 +1111,10 @@ describe('Voting Logic', () => {
         'Player4': 'Player3'
       }
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: true },
-        { name: 'Player2', role: 'crewmate', alive: true },
-        { name: 'Player3', role: 'imposter', alive: true },
-        { name: 'Player4', role: 'crewmate', alive: true }
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'ally', alive: true },
+        { name: 'Player3', role: 'traitor', alive: true },
+        { name: 'Player4', role: 'ally', alive: true }
       ]
 
       await tallyVotes()
@@ -1132,10 +1132,10 @@ describe('Voting Logic', () => {
         'Player4': 'Player3'
       }
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: true },
-        { name: 'Player2', role: 'crewmate', alive: true },
-        { name: 'Player3', role: 'imposter', alive: true },
-        { name: 'Player4', role: 'crewmate', alive: true }
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'ally', alive: true },
+        { name: 'Player3', role: 'traitor', alive: true },
+        { name: 'Player4', role: 'ally', alive: true }
       ]
 
       await tallyVotes()
@@ -1156,10 +1156,10 @@ describe('Voting Logic', () => {
         'Player4': 'skip'
       }
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: true },
-        { name: 'Player2', role: 'crewmate', alive: true },
-        { name: 'Player3', role: 'imposter', alive: true },
-        { name: 'Player4', role: 'crewmate', alive: true }
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'ally', alive: true },
+        { name: 'Player3', role: 'traitor', alive: true },
+        { name: 'Player4', role: 'ally', alive: true }
       ]
 
       await tallyVotes()
@@ -1178,10 +1178,10 @@ describe('Voting Logic', () => {
         'Player4': 'Player3'
       }
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: true },
-        { name: 'Player2', role: 'crewmate', alive: true },
-        { name: 'Player3', role: 'imposter', alive: true },
-        { name: 'Player4', role: 'crewmate', alive: true }
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'ally', alive: true },
+        { name: 'Player3', role: 'traitor', alive: true },
+        { name: 'Player4', role: 'ally', alive: true }
       ]
 
       await tallyVotes()
@@ -1200,8 +1200,8 @@ describe('Voting Logic', () => {
         'Player2': 'Player1'
       }
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: true },
-        { name: 'Player2', role: 'imposter', alive: true }
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'traitor', alive: true }
       ]
 
       await tallyVotes()
@@ -1223,10 +1223,10 @@ describe('Voting Logic', () => {
         'Player4': 'Player3'
       }
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: true },
-        { name: 'Player2', role: 'crewmate', alive: true },
-        { name: 'Player3', role: 'imposter', alive: true },
-        { name: 'Player4', role: 'crewmate', alive: true }
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'ally', alive: true },
+        { name: 'Player3', role: 'traitor', alive: true },
+        { name: 'Player4', role: 'ally', alive: true }
       ]
 
       await tallyVotes()
@@ -1242,8 +1242,8 @@ describe('Voting Logic', () => {
         'Player2': 'Player1'
       }
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: true },
-        { name: 'Player2', role: 'imposter', alive: true }
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'traitor', alive: true }
       ]
 
       await tallyVotes()
@@ -1262,10 +1262,10 @@ describe('Voting Logic', () => {
         'Player4': 'Player2'
       }
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: true },
-        { name: 'Player2', role: 'imposter', alive: true },
-        { name: 'Player3', role: 'crewmate', alive: true },
-        { name: 'Player4', role: 'crewmate', alive: true }
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'traitor', alive: true },
+        { name: 'Player3', role: 'ally', alive: true },
+        { name: 'Player4', role: 'ally', alive: true }
       ]
 
       await tallyVotes()
@@ -1287,12 +1287,12 @@ describe('Voting Logic', () => {
         'Player6': 'Player6'
       }
       gameState.players = [
-        { name: 'Player1', role: 'crewmate', alive: true },
-        { name: 'Player2', role: 'crewmate', alive: true },
-        { name: 'Player3', role: 'crewmate', alive: true },
-        { name: 'Player4', role: 'imposter', alive: true },
-        { name: 'Player5', role: 'crewmate', alive: true },
-        { name: 'Player6', role: 'crewmate', alive: true }
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'ally', alive: true },
+        { name: 'Player3', role: 'ally', alive: true },
+        { name: 'Player4', role: 'traitor', alive: true },
+        { name: 'Player5', role: 'ally', alive: true },
+        { name: 'Player6', role: 'ally', alive: true }
       ]
 
       await tallyVotes()
@@ -1392,7 +1392,7 @@ describe('Task Toggling', () => {
     gameState.players = [
       {
         name: 'Player1',
-        role: 'crewmate',
+        role: 'ally',
         tasks: [
           { room: 'Kitchen', task: 'Task1' },
           { room: 'Living Room', task: 'Task2' },
@@ -1403,7 +1403,7 @@ describe('Task Toggling', () => {
       },
       {
         name: 'Player2',
-        role: 'imposter',
+        role: 'traitor',
         tasks: [
           { room: 'Kitchen', task: 'Fake Task' }
         ],
@@ -1451,7 +1451,7 @@ describe('Task Toggling', () => {
     vi.clearAllMocks()
   })
 
-  describe('toggleTaskComplete - crewmate tasks', () => {
+  describe('toggleTaskComplete - ally tasks', () => {
     beforeEach(() => {
       gameState.currentPlayer = 'Player1'
     })
@@ -1503,8 +1503,8 @@ describe('Task Toggling', () => {
       expect(player.tasksCompleted).toBe(0) // Should stay at 0
     })
 
-    it('should handle crewmate tasks with database enabled', () => {
-      // This test verifies that crewmate task completion works when database is configured
+    it('should handle ally tasks with database enabled', () => {
+      // This test verifies that ally task completion works when database is configured
       // The actual database call (updatePlayerInDB) is tested in integration tests
       mockElements.task0.checked = true
 
@@ -1512,15 +1512,15 @@ describe('Task Toggling', () => {
 
       const player = gameState.players.find(p => p.name === 'Player1')
       expect(player.tasksCompleted).toBe(1)
-      expect(player.role).toBe('crewmate')
+      expect(player.role).toBe('ally')
     })
 
-    it('should check victory condition after crewmate completes task', () => {
+    it('should check victory condition after ally completes task', () => {
       const player = gameState.players.find(p => p.name === 'Player1')
       player.tasksCompleted = 0
       mockElements.task0.checked = true
 
-      // Spy on checkCrewmateVictory by checking if endGame gets called
+      // Spy on checkAllyVictory by checking if endGame gets called
       const originalGameEnded = gameState.gameEnded
 
       toggleTaskComplete(0)
@@ -1568,21 +1568,21 @@ describe('Task Toggling', () => {
     })
   })
 
-  describe('toggleTaskComplete - imposter tasks', () => {
+  describe('toggleTaskComplete - traitor tasks', () => {
     beforeEach(() => {
       gameState.currentPlayer = 'Player2'
     })
 
-    it('should increment tasksCompleted for imposters (dummy tracking)', () => {
-      const imposter = gameState.players.find(p => p.name === 'Player2')
+    it('should increment tasksCompleted for traitors (dummy tracking)', () => {
+      const traitor = gameState.players.find(p => p.name === 'Player2')
       mockElements.task0.checked = true
 
       toggleTaskComplete(0)
 
-      expect(imposter.tasksCompleted).toBe(1)
+      expect(traitor.tasksCompleted).toBe(1)
     })
 
-    it('should NOT update database for imposter tasks', () => {
+    it('should NOT update database for traitor tasks', () => {
       mockElements.task0.checked = true
 
       toggleTaskComplete(0)
@@ -1590,13 +1590,13 @@ describe('Task Toggling', () => {
       expect(global.updatePlayerInDB).not.toHaveBeenCalled()
     })
 
-    it('should NOT check victory condition for imposter tasks', () => {
+    it('should NOT check victory condition for traitor tasks', () => {
       const originalGameEnded = gameState.gameEnded
       mockElements.task0.checked = true
 
       toggleTaskComplete(0)
 
-      // Game should not end from imposter completing tasks
+      // Game should not end from traitor completing tasks
       expect(gameState.gameEnded).toBe(originalGameEnded)
     })
   })
@@ -1617,7 +1617,7 @@ describe('Task Toggling', () => {
       gameState.currentPlayer = 'Player3'
       gameState.players.push({
         name: 'Player3',
-        role: 'crewmate',
+        role: 'ally',
         tasks: [],
         tasksCompleted: 0,
         alive: true
@@ -1648,7 +1648,7 @@ describe('Task Assignment Logic', () => {
   beforeEach(() => {
     // Set up a complete game scenario
     gameState.stage = 'waiting'
-    gameState.settings.imposterCount = 1
+    gameState.settings.traitorCount = 1
     gameState.settings.tasksPerPlayer = 3
     gameState.settings.selectedRooms = {
       'Kitchen': {
@@ -1718,18 +1718,18 @@ describe('Task Assignment Logic', () => {
   })
 
   describe('Role assignment', () => {
-    it('should assign correct number of imposters', () => {
+    it('should assign correct number of traitors', () => {
       startGame()
 
-      const imposters = gameState.players.filter(p => p.role === 'imposter')
-      expect(imposters).toHaveLength(gameState.settings.imposterCount)
+      const traitors = gameState.players.filter(p => p.role === 'traitor')
+      expect(traitors).toHaveLength(gameState.settings.traitorCount)
     })
 
-    it('should assign remaining players as crewmates', () => {
+    it('should assign remaining players as allies', () => {
       startGame()
 
-      const crewmates = gameState.players.filter(p => p.role === 'crewmate')
-      expect(crewmates).toHaveLength(gameState.players.length - gameState.settings.imposterCount)
+      const allies = gameState.players.filter(p => p.role === 'ally')
+      expect(allies).toHaveLength(gameState.players.length - gameState.settings.traitorCount)
     })
 
     it('should assign all players a role', () => {
@@ -1737,7 +1737,7 @@ describe('Task Assignment Logic', () => {
 
       gameState.players.forEach(player => {
         expect(player.role).toBeDefined()
-        expect(['imposter', 'crewmate']).toContain(player.role)
+        expect(['traitor', 'ally']).toContain(player.role)
       })
     })
   })
@@ -1807,12 +1807,12 @@ describe('Task Assignment Logic', () => {
   })
 
   describe('Task assignment - Unique tasks', () => {
-    it('should not assign unique tasks to imposters', () => {
+    it('should not assign unique tasks to traitors', () => {
       startGame()
 
-      const imposters = gameState.players.filter(p => p.role === 'imposter')
-      imposters.forEach(imposter => {
-        imposter.tasks.forEach(task => {
+      const traitors = gameState.players.filter(p => p.role === 'traitor')
+      traitors.forEach(traitor => {
+        traitor.tasks.forEach(task => {
           // Check this task is not one of the unique tasks
           const uniqueTaskNames = ['Task3', 'Task5']
           expect(uniqueTaskNames).not.toContain(task.task)
@@ -1820,9 +1820,9 @@ describe('Task Assignment Logic', () => {
       })
     })
 
-    it('should allow crewmates to receive unique tasks', () => {
+    it('should allow allies to receive unique tasks', () => {
       // Run multiple times due to randomness
-      let crewmateGotUniqueTask = false
+      let allyGotUniqueTask = false
 
       for (let i = 0; i < 10; i++) {
         // Reset game state
@@ -1833,21 +1833,21 @@ describe('Task Assignment Logic', () => {
 
         startGame()
 
-        const crewmates = gameState.players.filter(p => p.role === 'crewmate')
-        crewmates.forEach(crewmate => {
-          crewmate.tasks.forEach(task => {
+        const allies = gameState.players.filter(p => p.role === 'ally')
+        allies.forEach(ally => {
+          ally.tasks.forEach(task => {
             const uniqueTaskNames = ['Task3', 'Task5']
             if (uniqueTaskNames.includes(task.task)) {
-              crewmateGotUniqueTask = true
+              allyGotUniqueTask = true
             }
           })
         })
 
-        if (crewmateGotUniqueTask) break
+        if (allyGotUniqueTask) break
       }
 
       // With 30% probability per task slot, should get at least one in 10 runs
-      expect(crewmateGotUniqueTask).toBe(true)
+      expect(allyGotUniqueTask).toBe(true)
     })
 
     it('should not duplicate unique tasks across players', () => {
@@ -2003,28 +2003,28 @@ describe('Task Assignment Logic', () => {
         }
       }
       gameState.settings.tasksPerPlayer = 3
-      gameState.settings.imposterCount = 1
+      gameState.settings.traitorCount = 1
 
       startGame()
 
-      const imposters = gameState.players.filter(p => p.role === 'imposter')
-      const crewmates = gameState.players.filter(p => p.role === 'crewmate')
+      const traitors = gameState.players.filter(p => p.role === 'traitor')
+      const allies = gameState.players.filter(p => p.role === 'ally')
 
-      // Imposters should not get unique tasks
-      imposters.forEach(imposter => {
+      // Traitors should not get unique tasks
+      traitors.forEach(traitor => {
         const uniqueTaskNames = ['Special Recipe', 'Rare Book']
-        imposter.tasks.forEach(task => {
+        traitor.tasks.forEach(task => {
           expect(uniqueTaskNames).not.toContain(task.task)
         })
         // And no duplicates
-        const taskNames = imposter.tasks.map(t => t.task)
+        const taskNames = traitor.tasks.map(t => t.task)
         const uniqueTasks = new Set(taskNames)
         expect(taskNames.length).toBe(uniqueTasks.size)
       })
 
-      // Crewmates should have no duplicates
-      crewmates.forEach(crewmate => {
-        const taskNames = crewmate.tasks.map(t => t.task)
+      // Allies should have no duplicates
+      allies.forEach(ally => {
+        const taskNames = ally.tasks.map(t => t.task)
         const uniqueTasks = new Set(taskNames)
         expect(taskNames.length).toBe(uniqueTasks.size)
       })
@@ -2054,10 +2054,10 @@ describe('Task Assignment Logic', () => {
 
       expect(() => startGame()).not.toThrow()
 
-      const imposters = gameState.players.filter(p => p.role === 'imposter')
-      // Imposters should have empty or very few tasks since they can't get unique
-      imposters.forEach(imposter => {
-        expect(imposter.tasks.length).toBeLessThanOrEqual(1)
+      const traitors = gameState.players.filter(p => p.role === 'traitor')
+      // Traitors should have empty or very few tasks since they can't get unique
+      traitors.forEach(traitor => {
+        expect(traitor.tasks.length).toBeLessThanOrEqual(1)
       })
     })
 
@@ -2124,9 +2124,9 @@ describe('Elimination Mechanics', () => {
     gameState.stage = 'playing'
     gameState.currentPlayer = 'Player1'
     gameState.players = [
-      { name: 'Player1', role: 'crewmate', alive: true, tasks: [], tasksCompleted: 0 },
-      { name: 'Player2', role: 'crewmate', alive: true, tasks: [], tasksCompleted: 0 },
-      { name: 'Player3', role: 'imposter', alive: true, tasks: [], tasksCompleted: 0 }
+      { name: 'Player1', role: 'ally', alive: true, tasks: [], tasksCompleted: 0 },
+      { name: 'Player2', role: 'ally', alive: true, tasks: [], tasksCompleted: 0 },
+      { name: 'Player3', role: 'traitor', alive: true, tasks: [], tasksCompleted: 0 }
     ]
 
     mockElements = {
@@ -2209,13 +2209,13 @@ describe('Elimination Mechanics', () => {
       expect(player.alive).toBe(false)
     })
 
-    it('should work for both crewmates and imposters', () => {
-      // Eliminate crewmate
+    it('should work for both allies and traitors', () => {
+      // Eliminate ally
       gameState.currentPlayer = 'Player1'
       eliminatePlayer()
       expect(gameState.players.find(p => p.name === 'Player1').alive).toBe(false)
 
-      // Eliminate imposter
+      // Eliminate traitor
       gameState.currentPlayer = 'Player3'
       eliminatePlayer()
       expect(gameState.players.find(p => p.name === 'Player3').alive).toBe(false)

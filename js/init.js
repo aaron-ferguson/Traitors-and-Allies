@@ -57,7 +57,7 @@ document.getElementById('room-code').textContent = roomCode;
 // Update displays
 document.getElementById('min-players-display').textContent = gameState.settings.minPlayers;
 document.getElementById('max-players-display').textContent = gameState.settings.maxPlayers;
-document.getElementById('imposter-count-display').textContent = gameState.settings.imposterCount;
+document.getElementById('traitor-count-display').textContent = gameState.settings.traitorCount;
 
 // Show appropriate stage
 if (gameState.stage === 'waiting') {

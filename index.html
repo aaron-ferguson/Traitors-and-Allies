@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Among Us - In-Person Game Manager</title>
+    <title>Traitors and Allies - In-Person Game Manager</title>
     <!-- Supabase Client Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- External CSS -->
@@ -14,7 +14,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>Among Us IRL</h1>
+            <h1>Traitors and Allies</h1>
             <p class="subtitle">Minigames and betrayal in your own backyard!</p>
         </header>
 
@@ -100,11 +100,11 @@
                     </label>
                 </div>
 
-                <!-- Imposter Setup -->
-                <h3>Imposter Settings</h3>
+                <!-- Traitor Setup -->
+                <h3>Traitor Settings</h3>
                 <div class="input-group">
-                    <label for="imposter-count">Number of Imposters:</label>
-                    <input type="number" id="imposter-count" min="1" max="3" value="1">
+                    <label for="traitor-count">Number of Traitors:</label>
+                    <input type="number" id="traitor-count" min="1" max="3" value="1">
                     <small style="color: #a0a0a0; display: block; margin-top: 5px;">
                         Recommended: 4-5 players = 1, 6-8 players = 2, 9-15 players = 3
                     </small>
@@ -192,8 +192,8 @@
                         <div class="stat-label">Joined / Maximum</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-number" id="imposter-count-display">1</div>
-                        <div class="stat-label">Imposters</div>
+                        <div class="stat-number" id="traitor-count-display">1</div>
+                        <div class="stat-label">Traitors</div>
                     </div>
                 </div>
 
@@ -299,7 +299,7 @@
             <div class="card hidden" id="discussion-phase">
                 <h2>Discussion Phase</h2>
                 <p style="text-align: center; color: #a0a0a0; margin-bottom: 20px;">
-                    Discuss who you think the imposter is...
+                    Discuss who you think the traitor is...
                 </p>
 
                 <!-- Ready status -->
@@ -487,20 +487,20 @@
                 </div>
 
                 <h3>How to Win</h3>
-                <h4 style="color: #5eb3f6; margin-top: 15px;">Crewmates Win If:</h4>
+                <h4 style="color: #5eb3f6; margin-top: 15px;">Allies Win If:</h4>
                 <ul style="margin-left: 20px; margin-bottom: 15px; line-height: 1.8;">
                     <li>All tasks are completed (including tasks of eliminated players)</li>
-                    <li>All imposters are eliminated</li>
+                    <li>All traitors are eliminated</li>
                 </ul>
 
-                <h4 style="color: #ff3838;">Imposters Win If:</h4>
+                <h4 style="color: #ff3838;">Traitors Win If:</h4>
                 <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
-                    <li>Number of imposters equals remaining crewmates (forcing tied votes)</li>
+                    <li>Number of traitors equals remaining allies (forcing tied votes)</li>
                 </ul>
 
                 <h3>Important Rules</h3>
                 <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
-                    <li><strong>Crewmates must walk.</strong> Imposters can move at any speed.</li>
+                    <li><strong>Allies must walk.</strong> Traitors can move at any speed.</li>
                     <li><strong>Stay safe.</strong> Don't do a task if it would put you in danger. Report concerns to the host.</li>
                     <li><strong>Eliminated players can still complete tasks</strong> - your contributions still count toward crew victory!</li>
                 </ul>

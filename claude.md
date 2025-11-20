@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Among Us IRL is a single-page web application for managing in-person Among Us gameplay. The application uses a modular architecture with separate CSS and JavaScript files for optimal performance and maintainability. No build process or external dependencies required.
+Traitors and Allies is a single-page web application for managing in-person Traitors and Allies gameplay. The application uses a modular architecture with separate CSS and JavaScript files for optimal performance and maintainability. No build process or external dependencies required.
 
 ## Deployment
 
@@ -44,7 +44,7 @@ gameState = {
     stage: 'setup' | 'waiting' | 'playing' | 'meeting' | 'ended',
     roomCode: string,
     settings: {
-        minPlayers, maxPlayers, tasksPerPlayer, imposterCount,
+        minPlayers, maxPlayers, tasksPerPlayer, traitorCount,
         eliminationCooldown, cooldownReduction,
         meetingRoom, meetingLimit, meetingTimer,
         selectedRooms: {
@@ -60,7 +60,7 @@ gameState = {
     roleRevealed: boolean,
     meetingsUsed: number,
     gameEnded: boolean,
-    winner: 'crewmates' | 'imposters'
+    winner: 'allies' | 'traitors'
 }
 ```
 
@@ -156,6 +156,128 @@ To enable multi-device support:
 - Subscribe to player updates for lobby
 - Unsubscribe when leaving/game ends
 - All devices see changes in real-time via WebSocket
+
+## Testing & Test-Driven Development
+
+This project maintains comprehensive unit test coverage using Vitest. All new features must include tests.
+
+### Test Infrastructure
+
+**Framework:** Vitest (ES module-native, fast, compatible with vanilla JS)
+
+**Test Files:**
+- `tests/game-state.test.js` (63 tests) - State management
+- `tests/room-task-manager.test.js` (41 tests) - CRUD operations
+- `tests/game-logic.test.js` (130 tests) - Game flow and business logic
+- **Total: 234 passing tests**
+
+**Running Tests:**
+```bash
+npm test              # Run all tests once
+npm run test:watch    # Watch mode for development
+```
+
+### Test-Driven Development Workflow
+
+When adding new features, follow this workflow:
+
+1. **Write Tests First** - Create test file for business logic functions
+2. **Run Tests** - Verify tests fail (red)
+3. **Implement Feature** - Write minimal code to pass tests
+4. **Verify Tests Pass** - All 234+ tests green
+5. **Commit** - Include tests in the same commit as feature code
+
+### What to Test
+
+**DO Test (High Value):**
+- ✅ Business logic (calculations, algorithms, state changes)
+- ✅ Complex conditionals and data transformations
+- ✅ State management and mutations
+- ✅ CRUD operations
+- ✅ Game flow and state transitions
+- ✅ Error handling and edge cases
+- ✅ Win/loss conditions
+- ✅ Player management
+- ✅ Voting and elimination logic
+- ✅ Task assignment algorithms
+
+**DON'T Test (Low Value):**
+- ❌ Simple DOM manipulation (getElementById, classList)
+- ❌ Functions that only delegate to other functions
+- ❌ Pure UI rendering without business logic
+- ❌ External library wrappers (Supabase SDK)
+- ❌ Static data constants
+- ❌ Glue code (init.js)
+- ❌ Animation/timer functions
+
+### Test Organization
+
+```javascript
+// tests/new-module.test.js
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { functionToTest } from '../js/new-module.js'
+
+describe('Module Name', () => {
+  beforeEach(() => {
+    // Reset state, mock DOM elements
+  })
+
+  describe('functionToTest', () => {
+    it('should handle normal case', () => {
+      // Arrange
+      const input = 'test'
+
+      // Act
+      const result = functionToTest(input)
+
+      // Assert
+      expect(result).toBe('expected')
+    })
+
+    it('should handle edge case', () => {
+      // Test edge cases
+    })
+  })
+})
+```
+
+### Mocking Strategy
+
+**DOM Elements:**
+```javascript
+global.document = {
+  getElementById: vi.fn((id) => mockElements[id] || defaultMock),
+  querySelector: vi.fn(() => defaultMock),
+  createElement: vi.fn(() => mockElement)
+}
+```
+
+**Supabase (if needed):**
+```javascript
+vi.mock('../js/supabase-backend.js', () => ({
+  updateGameInDB: vi.fn(),
+  createGameInDB: vi.fn()
+}))
+```
+
+### Coverage Goals
+
+**Current Coverage: ✅ EXCELLENT**
+- All critical business logic covered
+- All complex algorithms tested
+- All state management verified
+- Edge cases and error conditions included
+
+See `TEST_COVERAGE_ANALYSIS.md` for detailed coverage report.
+
+### Pre-Commit Checklist
+
+Before committing new features:
+1. ✅ All tests pass (`npm test`)
+2. ✅ New business logic has corresponding tests
+3. ✅ Tests follow existing organization patterns
+4. ✅ Mock setup is minimal and focused
+5. ✅ Test descriptions are clear and specific
 
 ## Known Limitations
 

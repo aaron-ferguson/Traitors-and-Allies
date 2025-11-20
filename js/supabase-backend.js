@@ -629,9 +629,9 @@ document.getElementById('game-end').classList.remove('hidden');
 const player = gameState.players.find(p => p.name === myPlayerName);
 const playerRole = player ? player.role : null;
 
-// Crewmates win if winner is 'crewmates', imposters win if winner is 'imposters'
-const didPlayerWin = (playerRole === 'crewmate' && gameState.winner === 'crewmates') ||
-(playerRole === 'imposter' && gameState.winner === 'imposters');
+// Allies win if winner is 'allies', traitors win if winner is 'traitors'
+const didPlayerWin = (playerRole === 'ally' && gameState.winner === 'allies') ||
+(playerRole === 'traitor' && gameState.winner === 'traitors');
 
 // Show appropriate screen
 if (didPlayerWin) {

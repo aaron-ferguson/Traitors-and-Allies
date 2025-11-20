@@ -25,7 +25,7 @@ settings: {
 minPlayers: 4,
 maxPlayers: 10,
 tasksPerPlayer: 4,
-imposterCount: 1,
+traitorCount: 1,
 eliminationCooldown: 30,
 cooldownReduction: 5,
 meetingRoom: '',

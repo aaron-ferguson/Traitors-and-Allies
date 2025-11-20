@@ -69,7 +69,7 @@ describe('Game State Module', () => {
       expect(gameState.settings.minPlayers).toBe(4)
       expect(gameState.settings.maxPlayers).toBe(10)
       expect(gameState.settings.tasksPerPlayer).toBe(4)
-      expect(gameState.settings.imposterCount).toBe(1)
+      expect(gameState.settings.traitorCount).toBe(1)
       expect(gameState.settings.eliminationCooldown).toBe(30)
       expect(gameState.settings.cooldownReduction).toBe(5)
       expect(gameState.settings.meetingRoom).toBe('')
@@ -393,7 +393,7 @@ describe('Game State Module', () => {
     })
 
     it('should allow adding players to gameState', () => {
-      gameState.players.push({ name: 'Player1', role: 'crewmate' })
+      gameState.players.push({ name: 'Player1', role: 'ally' })
       expect(gameState.players).toHaveLength(1)
       expect(gameState.players[0].name).toBe('Player1')
     })
@@ -420,15 +420,15 @@ describe('Game State Module', () => {
     })
 
     it('should allow setting winner', () => {
-      gameState.winner = 'crewmates'
-      expect(gameState.winner).toBe('crewmates')
+      gameState.winner = 'allies'
+      expect(gameState.winner).toBe('allies')
     })
 
     it('should allow updating settings', () => {
       gameState.settings.minPlayers = 6
-      gameState.settings.imposterCount = 2
+      gameState.settings.traitorCount = 2
       expect(gameState.settings.minPlayers).toBe(6)
-      expect(gameState.settings.imposterCount).toBe(2)
+      expect(gameState.settings.traitorCount).toBe(2)
     })
 
     it('should allow adding rooms to selectedRooms', () => {
