@@ -572,8 +572,20 @@ describe('Player Management', () => {
         role: null,
         tasks: [],
         alive: true,
-        tasksCompleted: 0
+        tasksCompleted: 0,
+        emergencyMeetingsUsed: 0
       })
+    })
+
+    it('should mark new players as ready immediately (for start button)', async () => {
+      // Regression test: Players who join by typing name and clicking "Join Game"
+      // should be ready=true because that IS their confirmation.
+      // The start button requires ready players, not just joined players.
+      mockElements.playerNameInput.value = 'Player1'
+
+      await joinGame()
+
+      expect(gameState.players[0].ready).toBe(true)
     })
 
     it('should handle reconnection for existing player', async () => {
@@ -2250,7 +2262,9 @@ describe('Meeting Flow', () => {
       reportSelection: { classList: { add: vi.fn(), remove: vi.fn() } },
       voteResults: { classList: { add: vi.fn(), remove: vi.fn() } },
       votingPhase: { classList: { add: vi.fn(), remove: vi.fn() } },
-      discussionPhase: { classList: { add: vi.fn(), remove: vi.fn() } }
+      discussionPhase: { classList: { add: vi.fn(), remove: vi.fn() } },
+      meetingTypeSelection: { classList: { add: vi.fn(), remove: vi.fn() } },
+      callMeetingBtn: { parentElement: { classList: { add: vi.fn(), remove: vi.fn() } } }
     }
 
     global.document = {
@@ -2263,7 +2277,9 @@ describe('Meeting Flow', () => {
           'report-selection': mockElements.reportSelection,
           'vote-results': mockElements.voteResults,
           'voting-phase': mockElements.votingPhase,
-          'discussion-phase': mockElements.discussionPhase
+          'discussion-phase': mockElements.discussionPhase,
+          'meeting-type-selection': mockElements.meetingTypeSelection,
+          'call-meeting-btn': mockElements.callMeetingBtn
         }
         return elementMap[id] || {
           classList: { add: vi.fn(), remove: vi.fn() },
@@ -2310,54 +2326,23 @@ describe('Meeting Flow', () => {
 
     global.alert = vi.fn()
     global.updateGameInDB = vi.fn()
+    global.displayGameplay = vi.fn()
 
     vi.clearAllMocks()
   })
 
   describe('callMeeting', () => {
-    it('should set meeting caller to current player', async () => {
-      await callMeeting()
+    it('should show meeting type selection', () => {
+      callMeeting()
 
-      expect(gameState.meetingCaller).toBe('Player1')
+      expect(mockElements.meetingTypeSelection.classList.remove).toHaveBeenCalledWith('hidden')
+      expect(mockElements.callMeetingBtn.parentElement.classList.add).toHaveBeenCalledWith('hidden')
     })
 
-    it('should show meeting overlay', async () => {
-      await callMeeting()
+    it('should not show meeting overlay yet', () => {
+      callMeeting()
 
-      expect(mockElements.meetingOverlay.classList.remove).toHaveBeenCalledWith('hidden')
-    })
-
-    it('should display meeting location', async () => {
-      await callMeeting()
-
-      expect(mockElements.meetingLocationAlert.textContent).toBe('Living Room')
-    })
-
-    it('should prevent calling meeting when limit reached', async () => {
-      gameState.meetingsUsed = 3
-      gameState.settings.meetingLimit = 3
-
-      await callMeeting()
-
-      expect(global.alert).toHaveBeenCalledWith('No emergency meetings remaining!')
-    })
-
-    it('should allow calling meeting when under limit', async () => {
-      gameState.meetingsUsed = 2
-      gameState.settings.meetingLimit = 3
-
-      await callMeeting()
-
-      expect(global.alert).not.toHaveBeenCalled()
-      expect(gameState.meetingCaller).toBe('Player1')
-    })
-
-    it('should handle zero meetings used initially', async () => {
-      gameState.meetingsUsed = 0
-
-      await callMeeting()
-
-      expect(gameState.meetingCaller).toBe('Player1')
+      expect(mockElements.meetingOverlay.classList.remove).not.toHaveBeenCalled()
     })
   })
 
@@ -2455,32 +2440,16 @@ describe('Meeting Flow', () => {
   })
 
   describe('Meeting limit enforcement', () => {
-    it('should allow first meeting', async () => {
-      gameState.meetingsUsed = 0
+    it('should always show meeting type selection', () => {
+      gameState.players = [
+        { name: 'Player1', role: 'ally', alive: true, emergencyMeetingsUsed: 0 }
+      ]
+      setMyPlayerName('Player1')
       gameState.settings.meetingLimit = 1
 
-      await callMeeting()
+      callMeeting()
 
-      expect(global.alert).not.toHaveBeenCalled()
-    })
-
-    it('should prevent meeting after limit reached', async () => {
-      gameState.meetingsUsed = 1
-      gameState.settings.meetingLimit = 1
-
-      await callMeeting()
-
-      expect(global.alert).toHaveBeenCalledWith('No emergency meetings remaining!')
-    })
-
-    it('should handle unlimited meetings (large limit)', async () => {
-      gameState.meetingsUsed = 99
-      gameState.settings.meetingLimit = 999
-
-      await callMeeting()
-
-      expect(global.alert).not.toHaveBeenCalled()
-      expect(gameState.meetingCaller).toBe('Player1')
+      expect(mockElements.meetingTypeSelection.classList.remove).toHaveBeenCalledWith('hidden')
     })
   })
 
