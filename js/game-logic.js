@@ -21,6 +21,7 @@ import {
   removePlayerFromDB,
   subscribeToGame,
   subscribeToPlayers,
+  startPlayerExistenceCheck,
   unsubscribeFromChannels
 } from './supabase-backend.js';
 
