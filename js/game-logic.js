@@ -323,11 +323,12 @@ return;
 
 gameState.players.push({
 name: name,
-ready: true,
+ready: false, // Changed: Player not ready until they confirm their name
 role: null,
 tasks: [],
 alive: true,
-tasksCompleted: 0
+tasksCompleted: 0,
+emergencyMeetingsUsed: 0
 });
 
 // Track this device's player
@@ -363,8 +364,8 @@ nameInput.value = '';
 updateJoinSection();
 updateLobby();
 
-// Add player to database with ready=true (submitting name = ready)
-await addPlayerToDB(name, true);
+// Add player to database with ready=false (not ready until name confirmed)
+await addPlayerToDB(name, false);
 
 // Start polling to detect if we get kicked
 startPlayerExistenceCheck();
@@ -926,15 +927,65 @@ document.getElementById('eliminated-modal').classList.remove('hidden');
 }
 }
 
-async function callMeeting() {
-if (gameState.meetingsUsed >= gameState.settings.meetingLimit) {
-alert('No emergency meetings remaining!');
+function showMeetingTypeSelection() {
+// Hide the call meeting button
+document.getElementById('call-meeting-btn').parentElement.classList.add('hidden');
+
+// Show the meeting type selection
+document.getElementById('meeting-type-selection').classList.remove('hidden');
+
+// Get current player's emergency meetings used
+const currentPlayer = gameState.players.find(p => p.name === myPlayerName);
+const meetingsUsed = currentPlayer?.emergencyMeetingsUsed || 0;
+const meetingsRemaining = gameState.settings.meetingLimit - meetingsUsed;
+
+// Update emergency meeting button text
+const emergencyBtn = document.getElementById('emergency-meeting-btn');
+const emergencyText = document.getElementById('emergency-meetings-text');
+emergencyText.textContent = `${meetingsRemaining} emergency meeting${meetingsRemaining !== 1 ? 's' : ''} remaining`;
+
+// Disable emergency meeting button if player has no meetings left
+if (meetingsRemaining <= 0) {
+emergencyBtn.disabled = true;
+emergencyBtn.style.opacity = '0.5';
+emergencyBtn.style.cursor = 'not-allowed';
+} else {
+emergencyBtn.disabled = false;
+emergencyBtn.style.opacity = '1';
+emergencyBtn.style.cursor = 'pointer';
+}
+}
+
+async function selectMeetingType(type) {
+if (type === 'cancel') {
+// Hide meeting type selection and show call meeting button again
+document.getElementById('meeting-type-selection').classList.add('hidden');
+document.getElementById('call-meeting-btn').parentElement.classList.remove('hidden');
 return;
 }
 
+// Set meeting type
+gameState.meetingType = type;
+
+// If emergency meeting, increment this player's count
+if (type === 'emergency') {
+const currentPlayer = gameState.players.find(p => p.name === myPlayerName);
+if (currentPlayer) {
+currentPlayer.emergencyMeetingsUsed = (currentPlayer.emergencyMeetingsUsed || 0) + 1;
+}
+}
+
+// Hide meeting type selection
+document.getElementById('meeting-type-selection').classList.add('hidden');
+
+// Trigger the actual meeting
+await triggerMeeting();
+}
+
+async function triggerMeeting() {
 // Set this player as the meeting caller
 gameState.meetingCaller = myPlayerName;
-console.log('Meeting called by:', myPlayerName);
+console.log('Meeting called by:', myPlayerName, 'Type:', gameState.meetingType);
 
 // Update database to trigger meeting for all players
 if (supabaseClient && currentGameId) {
@@ -943,7 +994,8 @@ const { error } = await supabaseClient
 .from('games')
 .update({
 stage: 'meeting',
-meetings_used: gameState.meetingsUsed,
+meeting_type: gameState.meetingType,
+meeting_caller: gameState.meetingCaller,
 updated_at: new Date().toISOString()
 })
 .eq('id', currentGameId);
@@ -964,6 +1016,11 @@ document.getElementById('meeting-overlay').classList.remove('hidden');
 
 // Play alarm sound
 playAlarmSound();
+}
+
+function callMeeting() {
+// Show meeting type selection instead of immediate meeting
+showMeetingTypeSelection();
 }
 
 function playAlarmSound() {
@@ -1842,7 +1899,8 @@ role: null,
 tasks: [],
 tasksCompleted: 0,
 alive: true,
-votedFor: null
+votedFor: null,
+emergencyMeetingsUsed: 0
 });
 }
 
@@ -2110,7 +2168,8 @@ ready: true,
 role: null,
 tasks: [],
 alive: true,
-tasksCompleted: 0
+tasksCompleted: 0,
+emergencyMeetingsUsed: 0
 });
 
 // Add to database with ready=true

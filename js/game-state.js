@@ -11,8 +11,18 @@ let playersChannel = null;
 let currentGameId = null;
 
 if (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+try {
+if (typeof supabase !== 'undefined') {
 const { createClient } = supabase;
 supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+console.log('Supabase client initialized successfully');
+} else {
+console.warn('Supabase library not loaded from CDN. Running in offline mode.');
+}
+} catch (error) {
+console.error('Failed to initialize Supabase:', error);
+console.warn('Running in offline mode.');
+}
 }
 // =================================================================
 

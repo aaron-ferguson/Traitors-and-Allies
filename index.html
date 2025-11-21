@@ -268,6 +268,25 @@
                     Emergency meetings remaining: <span id="meetings-remaining">1</span>
                 </p>
             </div>
+
+            <!-- Meeting Type Selection -->
+            <div class="card hidden" id="meeting-type-selection">
+                <h2>Select Meeting Type</h2>
+                <p style="color: #a0a0a0; margin-bottom: 20px;">Choose the type of meeting to call:</p>
+
+                <button id="emergency-meeting-btn" class="btn-secondary btn-block" onclick="selectMeetingType('emergency')" style="margin-bottom: 15px; font-size: 1.2rem;">
+                    EMERGENCY MEETING
+                    <span id="emergency-meetings-text" style="display: block; font-size: 0.9rem; margin-top: 5px; opacity: 0.8;"></span>
+                </button>
+
+                <button id="report-btn" class="btn-danger btn-block" onclick="selectMeetingType('report')" style="margin-bottom: 15px; font-size: 1.2rem;">
+                    REPORT BODY
+                </button>
+
+                <button id="cancel-meeting-btn" class="btn-secondary btn-block" onclick="selectMeetingType('cancel')" style="font-size: 1rem;">
+                    Cancel
+                </button>
+            </div>
         </div>
 
         <!-- STAGE 4: MEETING -->

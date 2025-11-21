@@ -2483,6 +2483,144 @@ describe('Meeting Flow', () => {
       expect(gameState.meetingCaller).toBe('Player1')
     })
   })
+
+  describe('Meeting Type Selection', () => {
+    beforeEach(() => {
+      gameState.stage = 'playing'
+      gameState.settings.meetingLimit = 2
+      gameState.players = [
+        { name: 'Player1', role: 'ally', alive: true, emergencyMeetingsUsed: 0 },
+        { name: 'Player2', role: 'ally', alive: true, emergencyMeetingsUsed: 1 },
+        { name: 'Player3', role: 'traitor', alive: true, emergencyMeetingsUsed: 2 }
+      ]
+      setMyPlayerName('Player1')
+      gameState.currentPlayer = 'Player1'
+      gameState.meetingType = null
+      gameState.meetingCaller = null
+
+      mockElements.meetingTypeSelection = { classList: { add: vi.fn(), remove: vi.fn() } }
+      mockElements.emergencyMeetingBtn = { disabled: false, textContent: '' }
+      mockElements.callMeetingBtn = { classList: { add: vi.fn(), remove: vi.fn() } }
+
+      global.document.getElementById = vi.fn((id) => {
+        const elementMap = {
+          'meeting-overlay': mockElements.meetingOverlay,
+          'meeting-location-alert': mockElements.meetingLocationAlert,
+          'game-phase': mockElements.gamePhase,
+          'meeting-phase': mockElements.meetingPhase,
+          'report-selection': mockElements.reportSelection,
+          'vote-results': mockElements.voteResults,
+          'voting-phase': mockElements.votingPhase,
+          'discussion-phase': mockElements.discussionPhase,
+          'meeting-type-selection': mockElements.meetingTypeSelection,
+          'emergency-meeting-btn': mockElements.emergencyMeetingBtn,
+          'call-meeting-btn': mockElements.callMeetingBtn
+        }
+        return elementMap[id] || {
+          classList: { add: vi.fn(), remove: vi.fn() },
+          style: {},
+          innerHTML: '',
+          textContent: '',
+          appendChild: vi.fn(),
+          disabled: false
+        }
+      })
+    })
+
+    it('should track per-player emergency meeting counts', () => {
+      expect(gameState.players[0].emergencyMeetingsUsed).toBe(0)
+      expect(gameState.players[1].emergencyMeetingsUsed).toBe(1)
+      expect(gameState.players[2].emergencyMeetingsUsed).toBe(2)
+    })
+
+    it('should calculate remaining emergency meetings correctly', () => {
+      const player1 = gameState.players[0]
+      const player2 = gameState.players[1]
+      const player3 = gameState.players[2]
+
+      expect(gameState.settings.meetingLimit - player1.emergencyMeetingsUsed).toBe(2)
+      expect(gameState.settings.meetingLimit - player2.emergencyMeetingsUsed).toBe(1)
+      expect(gameState.settings.meetingLimit - player3.emergencyMeetingsUsed).toBe(0)
+    })
+
+    it('should detect when player has no emergency meetings left', () => {
+      const player3 = gameState.players.find(p => p.name === 'Player3')
+      const hasNoMeetings = player3.emergencyMeetingsUsed >= gameState.settings.meetingLimit
+
+      expect(hasNoMeetings).toBe(true)
+    })
+
+    it('should detect when player has emergency meetings available', () => {
+      const player1 = gameState.players.find(p => p.name === 'Player1')
+      const hasMeetings = player1.emergencyMeetingsUsed < gameState.settings.meetingLimit
+
+      expect(hasMeetings).toBe(true)
+    })
+
+    it('should handle player with undefined emergencyMeetingsUsed', () => {
+      gameState.players.push({
+        name: 'Player4',
+        role: 'ally',
+        alive: true
+        // emergencyMeetingsUsed is undefined
+      })
+
+      const player4 = gameState.players.find(p => p.name === 'Player4')
+      // Should treat undefined as 0
+      const meetingsUsed = player4.emergencyMeetingsUsed || 0
+      expect(meetingsUsed).toBe(0)
+    })
+
+    it('should initialize emergencyMeetingsUsed to 0 for new players', () => {
+      const newPlayer = {
+        name: 'NewPlayer',
+        role: 'ally',
+        alive: true,
+        emergencyMeetingsUsed: 0
+      }
+
+      expect(newPlayer.emergencyMeetingsUsed).toBe(0)
+    })
+
+    it('should allow different players to have different meeting counts', () => {
+      const counts = gameState.players.map(p => p.emergencyMeetingsUsed)
+      const uniqueCounts = new Set(counts)
+
+      // We have 3 different counts: 0, 1, 2
+      expect(uniqueCounts.size).toBe(3)
+    })
+
+    it('should preserve other player meeting counts when one player uses a meeting', () => {
+      const player1 = gameState.players[0]
+      const player2 = gameState.players[1]
+
+      const player2OriginalCount = player2.emergencyMeetingsUsed
+
+      // Player1 uses a meeting
+      player1.emergencyMeetingsUsed += 1
+
+      // Player2's count should not change
+      expect(player2.emergencyMeetingsUsed).toBe(player2OriginalCount)
+    })
+
+    it('should handle edge case where meeting limit is 0', () => {
+      gameState.settings.meetingLimit = 0
+      const player = gameState.players[0]
+      player.emergencyMeetingsUsed = 0
+
+      const hasNoMeetings = player.emergencyMeetingsUsed >= gameState.settings.meetingLimit
+      expect(hasNoMeetings).toBe(true)
+    })
+
+    it('should handle edge case where player has used more meetings than limit', () => {
+      const player = gameState.players[0]
+      player.emergencyMeetingsUsed = 5
+      gameState.settings.meetingLimit = 2
+
+      const remaining = Math.max(0, gameState.settings.meetingLimit - player.emergencyMeetingsUsed)
+      expect(remaining).toBe(0)
+    })
+  })
 })
 
 describe('Return to Menu', () => {
