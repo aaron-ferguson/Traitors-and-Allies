@@ -417,7 +417,12 @@ lobbyDiv.innerHTML = '';
 const readyPlayers = gameState.players.filter(p => p.ready);
 console.log('Ready players count:', readyPlayers.length);
 
-gameState.players.forEach((player, index) => {
+// Sort players alphabetically by name
+const sortedPlayers = [...gameState.players].sort((a, b) =>
+  a.name.localeCompare(b.name)
+);
+
+sortedPlayers.forEach((player, index) => {
 const badge = document.createElement('div');
 badge.className = `player-badge ${player.ready ? 'player-ready' : ''}`;
 
@@ -1284,7 +1289,13 @@ document.getElementById('submit-vote-btn').disabled = true;
 // Show player status list
 const statusList = document.getElementById('vote-player-status-list');
 statusList.innerHTML = '';
-gameState.players.forEach(player => {
+
+// Sort players alphabetically by name
+const sortedPlayersForStatus = [...gameState.players].sort((a, b) =>
+  a.name.localeCompare(b.name)
+);
+
+sortedPlayersForStatus.forEach(player => {
 const item = document.createElement('div');
 item.style.cssText = 'padding: 6px; margin-bottom: 4px;';
 const statusBadge = player.alive
@@ -1315,7 +1326,13 @@ document.getElementById('vote-to-eliminate-label').style.display = 'none';
 // Show timer and vote labels for alive players
 document.getElementById('vote-timer-label').style.display = 'block';
 document.getElementById('vote-to-eliminate-label').style.display = 'block';
-gameState.players.filter(p => p.alive).forEach(player => {
+
+// Sort alive players alphabetically by name
+const sortedAlivePlayers = gameState.players
+  .filter(p => p.alive)
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+sortedAlivePlayers.forEach(player => {
 const option = document.createElement('div');
 option.className = 'vote-option';
 option.onclick = () => selectVote(player.name, option);

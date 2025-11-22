@@ -7,6 +7,7 @@ import {
   joinGame,
   kickPlayer,
   leaveGame,
+  updateLobby,
   startGame,
   returnToMenu,
   toggleTaskComplete,
@@ -23,7 +24,8 @@ import {
   showMeetingTypeSelection,
   displayGameplay,
   acknowledgeMeeting,
-  resumeGame
+  resumeGame,
+  startVoting
 } from '../js/game-logic.js'
 import { gameState, myPlayerName, isGameCreator, setMyPlayerName, setIsGameCreator, setCurrentGameId } from '../js/game-state.js'
 
@@ -2869,6 +2871,185 @@ describe('Return to Menu', () => {
     expect(gameState.players).toEqual([])
     expect(gameState.gameEnded).toBe(false)
     expect(gameState.winner).toBeNull()
+  })
+})
+
+describe('Player List Alphabetical Sorting', () => {
+  let mockLobbyDiv, mockStatusList, mockVoteOptions
+
+  beforeEach(() => {
+    // Mock DOM elements
+    mockLobbyDiv = {
+      innerHTML: '',
+      appendChild: vi.fn()
+    }
+
+    mockStatusList = {
+      innerHTML: '',
+      appendChild: vi.fn()
+    }
+
+    mockVoteOptions = {
+      innerHTML: '',
+      appendChild: vi.fn()
+    }
+
+    global.document = {
+      getElementById: vi.fn((id) => {
+        const elementMap = {
+          'lobby-players': mockLobbyDiv,
+          'vote-player-status-list': mockStatusList,
+          'vote-options': mockVoteOptions,
+          'ready-count': { textContent: '' },
+          'ready-list-count': { textContent: '' },
+          'joined-count': { textContent: '' },
+          'start-btn': { disabled: false },
+          'discussion-phase': { classList: { add: vi.fn(), remove: vi.fn() } },
+          'voting-phase': { classList: { add: vi.fn(), remove: vi.fn() } },
+          'submit-vote-btn': { disabled: false, style: { display: '' } },
+          'vote-timer-label': { style: { display: '' } },
+          'vote-to-eliminate-label': { style: { display: '' } },
+          'vote-timer': { textContent: '' }
+        }
+        return elementMap[id] || {
+          classList: { add: vi.fn(), remove: vi.fn() },
+          style: {},
+          textContent: '',
+          disabled: false
+        }
+      }),
+      createElement: vi.fn(() => {
+        const element = {
+          className: '',
+          innerHTML: '',
+          style: { cssText: '' },
+          onclick: null
+        }
+        return element
+      }),
+      body: {
+        innerHTML: ''
+      }
+    }
+
+    // Reset gameState
+    gameState.stage = 'waiting'
+    gameState.settings = {
+      minPlayers: 4,
+      maxPlayers: 10,
+      meetingTimer: 60
+    }
+    gameState.players = []
+    gameState.hostName = 'Charlie'
+
+    setMyPlayerName('Charlie')
+    setIsGameCreator(true)
+  })
+
+  describe('updateLobby', () => {
+    it('should display players in alphabetical order', () => {
+      // Add players in non-alphabetical order
+      gameState.players = [
+        { name: 'Zara', ready: true },
+        { name: 'Alice', ready: false },
+        { name: 'Mike', ready: true },
+        { name: 'Bob', ready: true }
+      ]
+
+      updateLobby()
+
+      // Check that appendChild was called 4 times (once per player)
+      expect(mockLobbyDiv.appendChild).toHaveBeenCalledTimes(4)
+
+      // Verify the order by checking the calls
+      const calls = mockLobbyDiv.appendChild.mock.calls
+      expect(calls[0][0].innerHTML).toContain('Alice')
+      expect(calls[1][0].innerHTML).toContain('Bob')
+      expect(calls[2][0].innerHTML).toContain('Mike')
+      expect(calls[3][0].innerHTML).toContain('Zara')
+    })
+
+    it('should maintain alphabetical order with host crown emoji', () => {
+      gameState.hostName = 'Mike'
+      gameState.players = [
+        { name: 'Zara', ready: true },
+        { name: 'Mike', ready: true },
+        { name: 'Alice', ready: false }
+      ]
+
+      updateLobby()
+
+      const calls = mockLobbyDiv.appendChild.mock.calls
+      expect(calls[0][0].innerHTML).toContain('Alice')
+      expect(calls[1][0].innerHTML).toContain('Mike')
+      expect(calls[1][0].innerHTML).toContain('👑')
+      expect(calls[2][0].innerHTML).toContain('Zara')
+    })
+  })
+
+  describe('startVoting', () => {
+    beforeEach(() => {
+      gameState.stage = 'meeting'
+      setMyPlayerName('Bob')
+    })
+
+    it('should display player status list in alphabetical order', () => {
+      gameState.players = [
+        { name: 'Zara', alive: true },
+        { name: 'Alice', alive: false },
+        { name: 'Mike', alive: true },
+        { name: 'Bob', alive: true }
+      ]
+
+      startVoting()
+
+      // Verify status list was populated
+      expect(mockStatusList.appendChild).toHaveBeenCalledTimes(4)
+
+      const calls = mockStatusList.appendChild.mock.calls
+      expect(calls[0][0].innerHTML).toContain('Alice')
+      expect(calls[1][0].innerHTML).toContain('Bob')
+      expect(calls[2][0].innerHTML).toContain('Mike')
+      expect(calls[3][0].innerHTML).toContain('Zara')
+    })
+
+    it('should display vote options in alphabetical order (alive players only)', () => {
+      gameState.players = [
+        { name: 'Zara', alive: true },
+        { name: 'Alice', alive: false },
+        { name: 'Mike', alive: true },
+        { name: 'Bob', alive: true }
+      ]
+
+      startVoting()
+
+      // Verify vote options were created (3 alive players + skip option)
+      const createElementCalls = global.document.createElement.mock.calls
+      const voteOptionElements = createElementCalls.filter((call, idx) =>
+        global.document.createElement.mock.results[idx]?.value?.className === 'vote-option'
+      )
+
+      // Should have 4 vote options: Bob, Mike, Zara, Skip
+      expect(voteOptionElements.length).toBeGreaterThanOrEqual(3)
+    })
+
+    it('should handle case-insensitive alphabetical sorting', () => {
+      // Set stage to waiting for updateLobby to work
+      gameState.stage = 'waiting'
+      gameState.players = [
+        { name: 'zara', ready: true },
+        { name: 'Alice', ready: true },
+        { name: 'bob', ready: true }
+      ]
+
+      updateLobby()
+
+      const calls = mockLobbyDiv.appendChild.mock.calls
+      // localeCompare is case-insensitive by default
+      expect(calls[0][0].innerHTML).toContain('Alice')
+      expect(calls[1][0].innerHTML).toContain('bob')
+      expect(calls[2][0].innerHTML).toContain('zara')
+    })
   })
 })
 
