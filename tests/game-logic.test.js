@@ -1375,6 +1375,64 @@ describe('Voting Logic', () => {
       expect(gameState.settings.voteResults).toBeDefined()
       expect(gameState.settings.voteResults.eliminatedPlayer).toBe('Player3')
     })
+
+    it('should display vote results immediately after tallying (no race condition)', async () => {
+      // Regression test: After tallyVotes() completes, vote results should be
+      // displayed to all players immediately, not just stored in gameState.
+      // Previously, players saw "Processing your vote..." until database sync
+      // completed, creating a confusing UX.
+
+      gameState.players = [
+        { name: 'Player1', role: 'ally', alive: true },
+        { name: 'Player2', role: 'ally', alive: true },
+        { name: 'Player3', role: 'traitor', alive: true }
+      ]
+
+      gameState.votes = {
+        'Player1': 'Player3',
+        'Player2': 'Player3',
+        'Player3': 'Player1'
+      }
+      gameState.votesTallied = false
+      setIsGameCreator(false) // Not host, just a regular player
+      setMyPlayerName('Player1')
+
+      // Mock DOM elements that displayVoteResults updates
+      const mockResultsDisplay = { innerHTML: '' }
+      const mockEjectedText = { textContent: '' }
+      const mockResumeBtn = {
+        classList: { remove: vi.fn(), add: vi.fn() },
+        disabled: true,
+        textContent: '',
+        className: ''
+      }
+      const mockWaitingMsg = { classList: { add: vi.fn() } }
+      const mockVotingPhase = { classList: { add: vi.fn() } }
+      const mockVoteResults = { classList: { remove: vi.fn() } }
+
+      global.document.getElementById = vi.fn((id) => {
+        if (id === 'results-display') return mockResultsDisplay
+        if (id === 'ejected-player-text') return mockEjectedText
+        if (id === 'resume-game-btn') return mockResumeBtn
+        if (id === 'waiting-for-host-resume') return mockWaitingMsg
+        if (id === 'voting-phase') return mockVotingPhase
+        if (id === 'vote-results') return mockVoteResults
+        return null
+      })
+
+      await tallyVotes()
+
+      // After tallying, vote results should be displayed immediately (no "Processing...")
+      // Check that results-display innerHTML was set (not empty and not "Processing...")
+      expect(mockResultsDisplay.innerHTML).toBeTruthy()
+      expect(mockResultsDisplay.innerHTML).not.toContain('Processing your vote')
+      expect(mockResultsDisplay.innerHTML).toContain('Player3')
+      expect(mockResultsDisplay.innerHTML).toContain('2 votes')
+
+      // Verify ejection text was set
+      expect(mockEjectedText.textContent).toContain('Player3')
+      expect(mockEjectedText.textContent).toContain('Traitor')
+    })
   })
 
   describe('selectVote', () => {

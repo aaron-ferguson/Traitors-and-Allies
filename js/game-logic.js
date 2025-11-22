@@ -1623,6 +1623,13 @@ eliminatedPlayer: eliminatedPlayer,
 isTie: isTie
 };
 
+// Display results immediately for current player to avoid "Processing..." message
+// This prevents race condition where player sees "Processing your vote..."
+// while waiting for database sync. The subscription will also call displayVoteResults
+// for other players, but this ensures immediate feedback for the current context.
+console.log('Displaying vote results immediately (before database sync)...');
+displayVoteResults(voteCounts, eliminatedPlayer, isTie);
+
 // Sync game state (including vote results) to database
 if (supabaseClient && currentGameId) {
 await updateGameInDB();
