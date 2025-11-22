@@ -2251,6 +2251,7 @@ export {
   showInstructions,
   closeInstructions,
   callMeeting,
+  selectMeetingType,
   acknowledgeMeeting,
   playAlarmSound,
   startDiscussionTimer,
