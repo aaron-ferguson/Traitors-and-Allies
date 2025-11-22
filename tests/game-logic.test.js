@@ -20,6 +20,8 @@ import {
   endGame,
   eliminatePlayer,
   callMeeting,
+  showMeetingTypeSelection,
+  displayGameplay,
   acknowledgeMeeting,
   resumeGame
 } from '../js/game-logic.js'
@@ -2350,6 +2352,186 @@ describe('Meeting Flow', () => {
     })
   })
 
+  describe('showMeetingTypeSelection', () => {
+    let emergencyBtn, emergencyText
+
+    beforeEach(() => {
+      emergencyBtn = {
+        disabled: false,
+        style: { opacity: '', cursor: '', background: '' }
+      }
+      emergencyText = { textContent: '' }
+
+      // Add these elements to the mock
+      global.document.getElementById = vi.fn((id) => {
+        const elementMap = {
+          'meeting-overlay': mockElements.meetingOverlay,
+          'meeting-location-alert': mockElements.meetingLocationAlert,
+          'game-phase': mockElements.gamePhase,
+          'meeting-phase': mockElements.meetingPhase,
+          'report-selection': mockElements.reportSelection,
+          'vote-results': mockElements.voteResults,
+          'voting-phase': mockElements.votingPhase,
+          'discussion-phase': mockElements.discussionPhase,
+          'meeting-type-selection': mockElements.meetingTypeSelection,
+          'call-meeting-btn': mockElements.callMeetingBtn,
+          'emergency-meeting-btn': emergencyBtn,
+          'emergency-meetings-text': emergencyText
+        }
+        return elementMap[id] || {
+          classList: { add: vi.fn(), remove: vi.fn() },
+          style: { opacity: '1', cursor: 'pointer' },
+          innerHTML: '',
+          textContent: '',
+          appendChild: vi.fn(),
+          disabled: false
+        }
+      })
+
+      gameState.players = [
+        { name: 'Player1', alive: true, emergencyMeetingsUsed: 0 }
+      ]
+    })
+
+    it('should enable emergency meeting button when meetings remain', () => {
+      gameState.settings.meetingLimit = 3
+      gameState.players[0].emergencyMeetingsUsed = 1
+
+      showMeetingTypeSelection()
+
+      expect(emergencyBtn.disabled).toBe(false)
+      expect(emergencyBtn.style.opacity).toBe('')
+      expect(emergencyBtn.style.cursor).toBe('')
+      expect(emergencyText.textContent).toBe('2 emergency meetings remaining')
+    })
+
+    it('should disable emergency meeting button when no meetings remain', () => {
+      gameState.settings.meetingLimit = 3
+      gameState.players[0].emergencyMeetingsUsed = 3
+
+      showMeetingTypeSelection()
+
+      expect(emergencyBtn.disabled).toBe(true)
+      expect(emergencyBtn.style.opacity).toBe('0.5')
+      expect(emergencyBtn.style.cursor).toBe('not-allowed')
+      expect(emergencyText.textContent).toBe('0 emergency meetings remaining')
+    })
+
+    it('should show singular "meeting" when 1 remains', () => {
+      gameState.settings.meetingLimit = 3
+      gameState.players[0].emergencyMeetingsUsed = 2
+
+      showMeetingTypeSelection()
+
+      expect(emergencyText.textContent).toBe('1 emergency meeting remaining')
+    })
+
+    it('should hide call meeting button and show selection', () => {
+      showMeetingTypeSelection()
+
+      expect(mockElements.callMeetingBtn.parentElement.classList.add).toHaveBeenCalledWith('hidden')
+      expect(mockElements.meetingTypeSelection.classList.remove).toHaveBeenCalledWith('hidden')
+    })
+  })
+
+  describe('displayGameplay - Call Meeting Button', () => {
+    let callMeetingBtn, meetingTypeSelection, meetingsRemaining
+
+    beforeEach(() => {
+      callMeetingBtn = {
+        parentElement: { classList: { add: vi.fn(), remove: vi.fn() } },
+        disabled: false,
+        style: { opacity: '1', cursor: 'pointer' }
+      }
+      meetingTypeSelection = { classList: { add: vi.fn(), remove: vi.fn() } }
+      meetingsRemaining = { textContent: '' }
+
+      global.document.getElementById = vi.fn((id) => {
+        const elementMap = {
+          'call-meeting-btn': callMeetingBtn,
+          'meeting-type-selection': meetingTypeSelection,
+          'meetings-remaining': meetingsRemaining,
+          'role-hidden': { classList: { add: vi.fn(), remove: vi.fn() } },
+          'role-revealed': { classList: { add: vi.fn(), remove: vi.fn() } },
+          'toggle-role-btn': { textContent: '' },
+          'role-text': { textContent: '', className: '' },
+          'player-tasks': { innerHTML: '' },
+          'completed-tasks-count': { textContent: '' },
+          'total-tasks-count': { textContent: '' }
+        }
+        return elementMap[id] || {
+          classList: { add: vi.fn(), remove: vi.fn() },
+          style: { opacity: '1', cursor: 'pointer' },
+          innerHTML: '',
+          textContent: '',
+          appendChild: vi.fn(),
+          disabled: false
+        }
+      })
+
+      gameState.stage = 'playing'
+      gameState.settings.meetingLimit = 3
+      setMyPlayerName('Player1')
+    })
+
+    it('should enable call meeting button for alive players', () => {
+      gameState.players = [
+        { name: 'Player1', role: 'ally', alive: true, tasks: [], emergencyMeetingsUsed: 0 }
+      ]
+      gameState.currentPlayer = 'Player1'
+
+      displayGameplay()
+
+      expect(callMeetingBtn.disabled).toBe(false)
+      expect(callMeetingBtn.style.opacity).toBe('1')
+      expect(callMeetingBtn.style.cursor).toBe('pointer')
+      expect(callMeetingBtn.parentElement.classList.remove).toHaveBeenCalledWith('hidden')
+    })
+
+    it('should enable call meeting button even when player has ZERO emergency meetings left', () => {
+      // This is the critical test - alive players should ALWAYS be able to call meetings
+      // (to report eliminated allies), even if they have no emergency meetings left
+      gameState.players = [
+        { name: 'Player1', role: 'ally', alive: true, tasks: [], emergencyMeetingsUsed: 3 }
+      ]
+      gameState.currentPlayer = 'Player1'
+
+      displayGameplay()
+
+      // Call meeting button should still be enabled
+      expect(callMeetingBtn.disabled).toBe(false)
+      expect(callMeetingBtn.style.opacity).toBe('1')
+      expect(callMeetingBtn.style.cursor).toBe('pointer')
+
+      // Emergency meetings counter should show 0
+      expect(meetingsRemaining.textContent).toBe(0)
+    })
+
+    it('should disable call meeting button for dead players', () => {
+      gameState.players = [
+        { name: 'Player1', role: 'ally', alive: false, tasks: [], emergencyMeetingsUsed: 0 }
+      ]
+      gameState.currentPlayer = 'Player1'
+
+      displayGameplay()
+
+      expect(callMeetingBtn.disabled).toBe(true)
+      expect(callMeetingBtn.style.opacity).toBe('0.5')
+      expect(callMeetingBtn.style.cursor).toBe('not-allowed')
+    })
+
+    it('should show correct emergency meetings remaining count', () => {
+      gameState.players = [
+        { name: 'Player1', role: 'ally', alive: true, tasks: [], emergencyMeetingsUsed: 1 }
+      ]
+      gameState.currentPlayer = 'Player1'
+
+      displayGameplay()
+
+      expect(meetingsRemaining.textContent).toBe(2)
+    })
+  })
+
   describe('acknowledgeMeeting', () => {
     beforeEach(() => {
       gameState.stage = 'meeting'
@@ -2391,6 +2573,12 @@ describe('Meeting Flow', () => {
       gameState.meetingCaller = 'Player1'
       gameState.settings.voteResults = { eliminatedPlayer: 'Player2' }
       setSelectedVote('Player2')
+
+      // Add players with roles for displayGameplay
+      gameState.players = [
+        { name: 'Player1', role: 'ally', alive: true, tasks: [], emergencyMeetingsUsed: 0 },
+        { name: 'Player2', role: 'ally', alive: true, tasks: [], emergencyMeetingsUsed: 0 }
+      ]
     })
 
     it('should only allow host to resume', () => {

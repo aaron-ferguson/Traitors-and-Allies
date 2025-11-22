@@ -2268,6 +2268,7 @@ export {
   showInstructions,
   closeInstructions,
   callMeeting,
+  showMeetingTypeSelection,
   selectMeetingType,
   acknowledgeMeeting,
   playAlarmSound,
