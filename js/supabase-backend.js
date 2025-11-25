@@ -246,9 +246,10 @@ try {
 console.log('Deleting player from DB:', playerName, 'game_id:', currentGameId);
 const { error } = await supabaseClient
 .from('players')
-.delete()
+.delete({ count: 'exact' })
 .eq('game_id', currentGameId)
-.eq('name', playerName);
+.eq('name', playerName)
+.select();
 
 if (error) throw error;
 console.log('Player deleted from DB successfully');
@@ -436,6 +437,69 @@ handlePlayerChange(payload);
 console.log('✓ Subscribed to player updates for game:', currentGameId);
 }
 
+function cleanupMeetingSubscription() {
+if (gameState.meetingReadySubscription) {
+console.log('Cleaning up meeting ready subscription...');
+supabaseClient.removeChannel(gameState.meetingReadySubscription);
+gameState.meetingReadySubscription = null;
+console.log('✓ Meeting ready subscription cancelled');
+}
+}
+
+function subscribeToMeetingReady() {
+console.log('=== SUBSCRIBING TO MEETING READY STATUS ===');
+
+if (!supabaseClient || !currentGameId) {
+console.warn('Cannot subscribe to meeting ready - missing supabaseClient or currentGameId');
+return null;
+}
+
+// Subscribe to changes in the meetingReady object
+const meetingReadyChannel = supabaseClient
+.channel(`meeting-ready-${currentGameId}`)
+.on(
+'postgres_changes',
+{
+event: 'UPDATE',
+schema: 'public',
+table: 'games',
+filter: `id=eq.${currentGameId}`
+},
+(payload) => {
+console.log('=== MEETING READY SUBSCRIPTION CALLBACK ===');
+
+// Only process if meetingReady changed
+const newMeetingReady = payload.new?.settings?.meetingReady;
+const oldMeetingReady = payload.old?.settings?.meetingReady;
+
+if (JSON.stringify(newMeetingReady) !== JSON.stringify(oldMeetingReady)) {
+console.log('Meeting ready status changed:', newMeetingReady);
+
+// Update local state from database (source of truth)
+gameState.meetingReady = newMeetingReady || {};
+
+// Only update UI if player is in meeting phase
+if (gameState.stage === 'meeting' &&
+!document.getElementById('meeting-phase').classList.contains('hidden')) {
+// Import updateReadyStatus from game-logic
+if (window.updateReadyStatus) {
+window.updateReadyStatus();
+}
+}
+
+// Check if all players are ready (host only)
+if (window.checkAllPlayersReady) {
+window.checkAllPlayersReady();
+}
+}
+}
+)
+.subscribe();
+
+console.log('✓ Subscribed to meeting ready status for game:', currentGameId);
+return meetingReadyChannel;
+}
+
 function startPlayerExistenceCheck() {
 // Clear any existing interval
 if (playerExistenceInterval) {
@@ -459,7 +523,7 @@ const { data, error } = await supabaseClient
 .select('name')
 .eq('game_id', currentGameId)
 .eq('name', myPlayerName)
-.single();
+.maybeSingle();
 
 if (error || !data) {
 // Player no longer exists in database - we were kicked!
@@ -674,6 +738,12 @@ console.log('✓ Transition to playing stage complete');
 const hasAcknowledged = gameState.meetingReady && gameState.meetingReady[myPlayerName];
 const meetingPhaseVisible = !document.getElementById('meeting-phase').classList.contains('hidden');
 
+// Start subscription to meeting ready status
+if (!gameState.meetingReadySubscription) {
+console.log('Starting meeting ready subscription...');
+gameState.meetingReadySubscription = subscribeToMeetingReady();
+}
+
 if (!hasAcknowledged && !meetingPhaseVisible) {
 console.log('Meeting stage detected, showing alert');
 document.getElementById('meeting-location-alert').textContent = gameState.settings.meetingRoom;
@@ -744,6 +814,8 @@ if (playersChannel) {
 supabaseClient.removeChannel(playersChannel);
 setPlayersChannel(null);
 }
+// Also cleanup meeting ready subscription
+cleanupMeetingSubscription();
 }
 
 // Export for testing and module usage
@@ -756,6 +828,8 @@ export {
   removePlayerFromDB,
   subscribeToGame,
   subscribeToPlayers,
+  subscribeToMeetingReady,
+  cleanupMeetingSubscription,
   startPlayerExistenceCheck,
   handlePlayerChange,
   handleStageChange,

@@ -21,6 +21,7 @@ import {
   removePlayerFromDB,
   subscribeToGame,
   subscribeToPlayers,
+  cleanupMeetingSubscription,
   startPlayerExistenceCheck,
   unsubscribeFromChannels
 } from './supabase-backend.js';
@@ -1273,14 +1274,62 @@ updateGameInDB();
 }
 }
 
-// Initialize meeting ready tracking
+// DATABASE FIRST: Update ready status in database
+if (myPlayerName) {
+if (supabaseClient && currentGameId) {
+// Update database first - this will trigger subscription for all players
+(async () => {
+try {
+// Fetch current meetingReady from database
+const { data: currentGame } = await supabaseClient
+.from('games')
+.select('settings')
+.eq('id', currentGameId)
+.single();
+
+// Merge with existing ready status
+const existingReady = currentGame?.settings?.meetingReady || {};
+const updatedReady = {
+...existingReady,
+[myPlayerName]: true
+};
+
+// Update database - this will trigger subscription for all players
+await supabaseClient
+.from('games')
+.update({
+settings: {
+...currentGame.settings,
+meetingReady: updatedReady
+}
+})
+.eq('id', currentGameId);
+
+console.log('Ready status updated in database for', myPlayerName);
+
+// Update local state from what we just wrote to DB (source of truth)
+gameState.meetingReady = updatedReady;
+
+// Update ready count display
+updateReadyStatus();
+} catch (error) {
+console.error('Failed to update ready status:', error);
+// Fallback to local update if database fails
 if (!gameState.meetingReady) {
 gameState.meetingReady = {};
 }
-
-// Mark this player as ready
-if (myPlayerName) {
 gameState.meetingReady[myPlayerName] = true;
+updateReadyStatus();
+}
+})();
+} else {
+// Offline mode: update local state only
+if (!gameState.meetingReady) {
+gameState.meetingReady = {};
+}
+gameState.meetingReady[myPlayerName] = true;
+updateReadyStatus();
+}
 }
 
 // Show toggle button for host controls if this is the host
@@ -1292,14 +1341,29 @@ toggleBtn.classList.remove('hidden');
 toggleBtn.disabled = false; // Re-enable for new meeting (was disabled during previous voting)
 renderHostPlayerStatus();
 }
-
-// Update ready count display
-updateReadyStatus();
-
-// Sync to database
-if (supabaseClient && currentGameId) {
-updateGameInDB();
 }
+
+function checkAllPlayersReady() {
+  // Only run on host
+  if (!isHost()) return;
+
+  const alivePlayers = gameState.players.filter(p => p.alive);
+  const readyCount = Object.keys(gameState.meetingReady || {}).filter(name => {
+    const player = gameState.players.find(p => p.name === name);
+    return player && player.alive;
+  }).length;
+
+  if (readyCount === alivePlayers.length && alivePlayers.length > 0) {
+    console.log('All players ready! Verifying everyone can see each other...');
+
+    // Verification: Log ready list for debugging
+    console.log('Ready players:', Object.keys(gameState.meetingReady));
+    console.log('Alive players:', alivePlayers.map(p => p.name));
+
+    // Enable voting button
+    document.getElementById('host-start-voting-btn')?.classList.remove('hidden');
+    document.getElementById('waiting-for-players-msg')?.classList.add('hidden');
+  }
 }
 
 
@@ -1432,6 +1496,9 @@ startVoting();
 }
 
 function startVoting() {
+// Cancel meeting ready subscription when voting starts
+cleanupMeetingSubscription();
+
 // Disable host elimination controls once voting starts
 const toggleBtn = document.getElementById('toggle-elimination-controls-btn');
 if (toggleBtn) {
@@ -2535,6 +2602,7 @@ export {
   showMeetingTypeSelection,
   selectMeetingType,
   acknowledgeMeeting,
+  checkAllPlayersReady,
   playAlarmSound,
   playVictorySound,
   playDefeatSound,
