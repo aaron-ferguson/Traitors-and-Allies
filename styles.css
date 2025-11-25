@@ -292,7 +292,12 @@
             display: flex;
             justify-content: flex-end;
             margin-bottom: 12px;
-            padding: 0 10px;
+            padding: 12px 10px;
+            background: #1a1a2e; /* Opaque background to prevent delete buttons showing through */
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-radius: 6px 6px 0 0;
         }
 
         .edit-mode-btn {
@@ -382,7 +387,7 @@
 
         .task-item {
             padding: 12px;
-            background: rgba(255, 255, 255, 0.05); /* Item background covers delete button */
+            background: #1a1a2e; /* Opaque background to fully hide delete button */
             border-radius: 6px;
             display: flex;
             align-items: flex-start;
@@ -395,7 +400,7 @@
         }
 
         .task-item:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: #252542; /* Slightly lighter opaque background on hover */
         }
 
         .task-item.swiped {

@@ -5,6 +5,10 @@ global.alert = vi.fn()
 global.confirm = vi.fn(() => true)
 global.prompt = vi.fn()
 
+// Mock Vibration API
+global.navigator = global.navigator || {}
+global.navigator.vibrate = vi.fn()
+
 // Mock Supabase global object (loaded via CDN in browser)
 global.supabase = {
   createClient: vi.fn(() => ({

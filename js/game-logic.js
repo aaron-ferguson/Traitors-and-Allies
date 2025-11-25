@@ -92,6 +92,13 @@ clearInterval(playerExistenceInterval);
 setPlayerExistenceInterval(null);
 }
 
+// Clear voting timer if it's still running
+if (votingTimerInterval !== null) {
+console.log('⏱️  Clearing voting timer (returning to menu)');
+clearInterval(votingTimerInterval);
+votingTimerInterval = null;
+}
+
 // Unsubscribe from channels FIRST to prevent callbacks from firing
 unsubscribeFromChannels();
 
@@ -786,7 +793,7 @@ for (let j = 0; j < availableUnique.length; j++) {
 const uniqueTask = availableUnique[j];
 const taskKey = `${uniqueTask.room}:${uniqueTask.task}`;
 if (!usedTasks.has(taskKey)) {
-assignedTasks.push(uniqueTask);
+assignedTasks.push({ ...uniqueTask, completed: false });
 usedTasks.add(taskKey);
 usedRooms.add(uniqueTask.room);
 availableUnique.splice(j, 1); // Remove so it's not assigned to another player
@@ -810,7 +817,7 @@ const roomTasks = tasksByRoom[randomRoom];
 for (const task of roomTasks) {
 const taskKey = `${task.room}:${task.task}`;
 if (!usedTasks.has(taskKey)) {
-assignedTasks.push(task);
+assignedTasks.push({ ...task, completed: false });
 usedTasks.add(taskKey);
 usedRooms.add(task.room);
 taskAssigned = true;
@@ -824,7 +831,7 @@ if (!taskAssigned) {
 for (const task of availableNonUnique) {
 const taskKey = `${task.room}:${task.task}`;
 if (!usedTasks.has(taskKey)) {
-assignedTasks.push(task);
+assignedTasks.push({ ...task, completed: false });
 usedTasks.add(taskKey);
 usedRooms.add(task.room);
 taskAssigned = true;
@@ -950,7 +957,7 @@ const checkbox = document.createElement('input');
 checkbox.type = 'checkbox';
 checkbox.id = `task-${index}`;
 checkbox.style.cssText = 'margin-right: 10px; width: 18px; height: 18px; cursor: pointer;';
-checkbox.checked = index < (player.tasksCompleted || 0);
+checkbox.checked = taskObj.completed || false;
 
 // Only allow allies to actually complete tasks (traitors' checks are cosmetic)
 checkbox.onchange = () => toggleTaskComplete(index);
@@ -971,14 +978,14 @@ const player = gameState.players.find(p => p.name === myPlayerName);
 if (!player) return;
 
 const checkbox = document.getElementById(`task-${taskIndex}`);
+const task = player.tasks[taskIndex];
+if (!task) return;
 
-if (checkbox.checked) {
-// Task completed
-player.tasksCompleted = Math.min((player.tasksCompleted || 0) + 1, player.tasks.length);
-} else {
-// Task unchecked
-player.tasksCompleted = Math.max((player.tasksCompleted || 0) - 1, 0);
-}
+// Toggle the specific task's completed status
+task.completed = checkbox.checked;
+
+// Recalculate total completed count
+player.tasksCompleted = player.tasks.filter(t => t.completed).length;
 
 // Update the count display
 document.getElementById('completed-tasks-count').textContent = player.tasksCompleted;
@@ -988,6 +995,7 @@ if (player.role === 'ally') {
 // Update player in database
 if (supabaseClient && currentGameId) {
 updatePlayerInDB(player.name, {
+tasks: player.tasks,  // Sync full tasks array with completed flags
 tasks_completed: player.tasksCompleted
 });
 }
@@ -1173,6 +1181,61 @@ oscillator.start(audioContext.currentTime);
 oscillator.stop(audioContext.currentTime + 0.3);
 count++;
 }, 400);
+}
+
+function playVictorySound() {
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+// Victory fanfare: ascending major chord (C-E-G-C)
+const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+const durations = [0.2, 0.2, 0.2, 0.5]; // Last note is longer
+let delay = 0;
+
+notes.forEach((frequency, index) => {
+setTimeout(() => {
+const oscillator = audioContext.createOscillator();
+const gainNode = audioContext.createGain();
+oscillator.connect(gainNode);
+gainNode.connect(audioContext.destination);
+oscillator.frequency.value = frequency;
+oscillator.type = 'sine'; // Smoother, more pleasant tone
+gainNode.gain.setValueAtTime(0.25, audioContext.currentTime);
+gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + durations[index]);
+oscillator.start(audioContext.currentTime);
+oscillator.stop(audioContext.currentTime + durations[index]);
+}, delay * 1000);
+delay += durations[index];
+});
+}
+
+function playDefeatSound() {
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+// Defeat tone: descending minor notes
+const notes = [392.00, 329.63, 293.66]; // G4, E4, D4
+const durations = [0.3, 0.3, 0.6]; // Last note is longer
+let delay = 0;
+
+notes.forEach((frequency, index) => {
+setTimeout(() => {
+const oscillator = audioContext.createOscillator();
+const gainNode = audioContext.createGain();
+oscillator.connect(gainNode);
+gainNode.connect(audioContext.destination);
+oscillator.frequency.value = frequency;
+oscillator.type = 'sine';
+gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + durations[index]);
+oscillator.start(audioContext.currentTime);
+oscillator.stop(audioContext.currentTime + durations[index]);
+}, delay * 1000);
+delay += durations[index];
+});
+}
+
+function playGameEndVibration() {
+// 3 pulses: vibrate, pause, vibrate, pause, vibrate
+if ('vibrate' in navigator) {
+navigator.vibrate([200, 100, 200, 100, 200]);
+}
 }
 
 function acknowledgeMeeting() {
@@ -1889,6 +1952,13 @@ document.getElementById('eliminated-modal').classList.add('hidden');
 function endGame(winner, message) {
 console.log('Game ending - Winner:', winner, 'Message:', message);
 
+// Clear voting timer if it's still running (game ended during voting)
+if (votingTimerInterval !== null) {
+console.log('⏱️  Clearing voting timer (game ended during voting)');
+clearInterval(votingTimerInterval);
+votingTimerInterval = null;
+}
+
 // Update game state
 gameState.gameEnded = true;
 gameState.winner = winner;
@@ -1919,10 +1989,22 @@ if (didPlayerWin) {
 document.getElementById('victory-screen').classList.remove('hidden');
 document.getElementById('defeat-screen').classList.add('hidden');
 document.getElementById('meeting-location-victory').textContent = gameState.settings.meetingRoom;
+try {
+playVictorySound();
+} catch (e) {
+// AudioContext not available (likely in test environment)
+}
+playGameEndVibration();
 } else {
 document.getElementById('victory-screen').classList.add('hidden');
 document.getElementById('defeat-screen').classList.remove('hidden');
 document.getElementById('meeting-location-defeat').textContent = gameState.settings.meetingRoom;
+try {
+playDefeatSound();
+} catch (e) {
+// AudioContext not available (likely in test environment)
+}
+playGameEndVibration();
 }
 
 // Populate game summary
@@ -1984,8 +2066,8 @@ const statusText = player.alive ? 'Alive' : 'Eliminated';
 // Build tasks list
 let tasksHTML = '<div style="margin-top: 10px;">';
 if (player.tasks && player.tasks.length > 0) {
-player.tasks.forEach((taskObj, index) => {
-const completed = index < (player.tasksCompleted || 0);
+player.tasks.forEach((taskObj) => {
+const completed = taskObj.completed || false;
 const checkmark = completed ? '✓' : '○';
 const color = completed ? '#ffffff' : '#a0a0a0';
 tasksHTML += `<div style="color: ${color}; font-size: 0.9rem; margin: 3px 0;">${checkmark} ${taskObj.task} (${taskObj.room})</div>`;
@@ -2431,6 +2513,9 @@ export {
   selectMeetingType,
   acknowledgeMeeting,
   playAlarmSound,
+  playVictorySound,
+  playDefeatSound,
+  playGameEndVibration,
   updateReadyStatus,
   hostStartVoting,
   startVoting,

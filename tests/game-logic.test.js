@@ -1501,9 +1501,9 @@ describe('Task Toggling', () => {
         name: 'Player1',
         role: 'ally',
         tasks: [
-          { room: 'Kitchen', task: 'Task1' },
-          { room: 'Living Room', task: 'Task2' },
-          { room: 'Bedroom', task: 'Task3' }
+          { room: 'Kitchen', task: 'Task1', completed: false },
+          { room: 'Living Room', task: 'Task2', completed: false },
+          { room: 'Bedroom', task: 'Task3', completed: false }
         ],
         tasksCompleted: 0,
         alive: true
@@ -1512,7 +1512,7 @@ describe('Task Toggling', () => {
         name: 'Player2',
         role: 'traitor',
         tasks: [
-          { room: 'Kitchen', task: 'Fake Task' }
+          { room: 'Kitchen', task: 'Fake Task', completed: false }
         ],
         tasksCompleted: 0,
         alive: true
@@ -1575,6 +1575,10 @@ describe('Task Toggling', () => {
 
     it('should decrement tasksCompleted when unchecking a task', () => {
       const player = gameState.players.find(p => p.name === 'Player1')
+      // Properly initialize task completion states
+      player.tasks[0].completed = true
+      player.tasks[1].completed = true
+      player.tasks[2].completed = false
       player.tasksCompleted = 2
       mockElements.task1.checked = false
 
@@ -1593,6 +1597,10 @@ describe('Task Toggling', () => {
 
     it('should not exceed maximum tasks when checking multiple times', () => {
       const player = gameState.players.find(p => p.name === 'Player1')
+      // Properly initialize all tasks as completed
+      player.tasks[0].completed = true
+      player.tasks[1].completed = true
+      player.tasks[2].completed = true
       player.tasksCompleted = 3 // Already at max
 
       mockElements.task0.checked = true
@@ -1691,9 +1699,9 @@ describe('Task Toggling', () => {
       expect(player1.tasksCompleted).toBe(0)
       expect(player2.tasksCompleted).toBe(0)
 
-      // Player2 checks their task at index 1 (middle task)
-      mockElements.task1.checked = true
-      toggleTaskComplete(1)
+      // Player2 checks their task at index 0 (their only task)
+      mockElements.task0.checked = true
+      toggleTaskComplete(0)
 
       // Player2's tasks should increment, not Player1's
       expect(player2.tasksCompleted).toBe(1)
@@ -3054,6 +3062,29 @@ describe('Return to Menu', () => {
     expect(gameState.gameEnded).toBe(false)
     expect(gameState.winner).toBeNull()
   })
+
+  it('should clear voting timer when returning to menu during voting', () => {
+    // This test ensures that when returning to menu during voting,
+    // the voting timer is cleared to prevent it from running in the background
+    // and potentially triggering unwanted state changes
+
+    // Mock clearInterval to verify it's called
+    const originalClearInterval = global.clearInterval
+    const clearIntervalSpy = vi.fn()
+    global.clearInterval = clearIntervalSpy
+
+    // Simulate that a voting timer is running (interval ID = 789)
+    const mockIntervalId = 789
+    setVotingTimerInterval(mockIntervalId)
+
+    returnToMenu()
+
+    // Verify that clearInterval was called with our mock interval ID
+    expect(clearIntervalSpy).toHaveBeenCalledWith(mockIntervalId)
+
+    // Restore original clearInterval
+    global.clearInterval = originalClearInterval
+  })
 })
 
 describe('Player List Alphabetical Sorting', () => {
@@ -3353,6 +3384,33 @@ describe('Game End Screen', () => {
 
       expect(mockElements.victoryScreen.classList.remove).toHaveBeenCalledWith('hidden')
       expect(mockElements.defeatScreen.classList.add).toHaveBeenCalledWith('hidden')
+    })
+
+    it('should clear voting timer when game ends during voting', () => {
+      // This test ensures that when the game ends during voting (e.g., last traitor eliminated),
+      // the voting timer is cleared to prevent unnecessary processing and accidental state changes
+
+      setMyPlayerName('Player1')
+      setIsGameCreator(true)
+      gameState.hostName = 'Player1'
+      gameState.players = [{ name: 'Player1', role: 'ally' }]
+
+      // Mock clearInterval to verify it's called
+      const originalClearInterval = global.clearInterval
+      const clearIntervalSpy = vi.fn()
+      global.clearInterval = clearIntervalSpy
+
+      // Simulate that a voting timer is running (interval ID = 456)
+      const mockIntervalId = 456
+      setVotingTimerInterval(mockIntervalId)
+
+      endGame('allies', 'Allies win!')
+
+      // Verify that clearInterval was called with our mock interval ID
+      expect(clearIntervalSpy).toHaveBeenCalledWith(mockIntervalId)
+
+      // Restore original clearInterval
+      global.clearInterval = originalClearInterval
     })
   })
 })
