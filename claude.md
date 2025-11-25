@@ -65,10 +65,7 @@ gameState = {
 ```
 
 ### Core Data Structure
-`ROOMS_AND_TASKS` constant (in `js/rooms-and-tasks.js`) contains preset rooms with several tasks per room:
-- Anywhere, Outside, Living Room, Kitchen, Garage
-- Bedrooms, Bathrooms, Closets, Office, Other
-
+`ROOMS_AND_TASKS` constant (in `js/rooms-and-tasks.js`) contains preset rooms with several tasks per room
 This is the source of truth for all game locations and activities.
 
 ### Key Rendering Pattern
