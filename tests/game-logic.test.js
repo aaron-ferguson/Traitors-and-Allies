@@ -3531,3 +3531,98 @@ describe('Subsequent Game Sessions - Task Assignment', () => {
     })
   })
 })
+
+describe('Subsequent Game Sessions - Meeting Alerts', () => {
+  beforeEach(() => {
+    // Mock window and document for this test suite
+    global.window = {
+      location: {
+        origin: 'http://localhost:3000',
+        pathname: '/'
+      }
+    }
+
+    const mockElement = {
+      src: '',
+      textContent: '',
+      innerHTML: '',
+      classList: {
+        add: vi.fn(),
+        remove: vi.fn(),
+        contains: vi.fn(() => false)
+      },
+      style: {
+        display: ''
+      },
+      value: '',
+      disabled: false,
+      appendChild: vi.fn(),
+      removeChild: vi.fn()
+    }
+
+    global.document = {
+      getElementById: vi.fn(() => mockElement),
+      body: mockElement,
+      querySelector: vi.fn(() => mockElement),
+      querySelectorAll: vi.fn(() => []),
+      createElement: vi.fn(() => mockElement)
+    }
+  })
+
+  it('should reset meetingReady when starting new game session', async () => {
+    // PROBLEM: No alert sent to other players for meetings in subsequent games
+    // ROOT CAUSE: gameState.meetingReady not reset in newGameSameSettings()
+    // TEST: Verify meetingReady is reset after newGameSameSettings()
+
+    // Simulate first game with meeting called and acknowledged
+    gameState.meetingReady = {
+      'Player1': true,
+      'Player2': true,
+      'Player3': true
+    }
+    gameState.meetingCaller = 'Player1'
+    gameState.meetingType = 'report'
+    gameState.stage = 'meeting'
+
+    // Verify meetingReady has data from first game
+    expect(gameState.meetingReady['Player1']).toBe(true)
+    expect(gameState.meetingReady['Player2']).toBe(true)
+    expect(Object.keys(gameState.meetingReady).length).toBe(3)
+
+    // Call newGameSameSettings to start new session
+    await newGameSameSettings()
+
+    // CRITICAL: Verify meetingReady was reset
+    // This ensures meeting alerts will work in the new session
+    expect(gameState.meetingReady).toEqual({})
+    expect(Object.keys(gameState.meetingReady).length).toBe(0)
+
+    // Verify other meeting state was also reset
+    expect(gameState.meetingCaller).toBeNull()
+    expect(gameState.meetingType).toBeNull()
+  })
+
+  it('should reset meetingReady when starting game with new settings', () => {
+    // Also test newGameNewSettings() function
+
+    // Simulate previous game state
+    gameState.meetingReady = {
+      'Player1': true,
+      'Player2': true
+    }
+    gameState.meetingCaller = 'Player2'
+    gameState.meetingType = 'emergency'
+
+    // Verify meetingReady has data
+    expect(Object.keys(gameState.meetingReady).length).toBe(2)
+
+    // Call newGameNewSettings
+    newGameNewSettings()
+
+    // CRITICAL: Verify meetingReady was reset
+    expect(gameState.meetingReady).toEqual({})
+    expect(Object.keys(gameState.meetingReady).length).toBe(0)
+    expect(gameState.meetingCaller).toBeNull()
+    expect(gameState.meetingType).toBeNull()
+  })
+})

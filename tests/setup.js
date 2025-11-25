@@ -39,7 +39,7 @@ beforeEach(() => {
   }
 
   // Clear DOM before each test
-  if (typeof document !== 'undefined') {
+  if (typeof document !== 'undefined' && document.body) {
     document.body.innerHTML = ''
   }
 })

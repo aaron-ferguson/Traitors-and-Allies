@@ -9,7 +9,7 @@ Traitors and Allies is a single-page web application for managing in-person Trai
 ## Deployment
 
 - **Platform**: Vercel
-- **Repository**: https://github.com/aaron-ferguson/Among-Us-IRL
+- **Repository**: https://github.com/aaron-ferguson/Traitors-and-Allies
 - **Deployment**: Automatic on push to main branch
 - **Critical**: `index.html` must be at repository root for Vercel to serve it correctly
 
@@ -19,21 +19,21 @@ Traitors and Allies is a single-page web application for managing in-person Trai
 The application is organized into focused modules for optimal Claude Code and app performance:
 
 **Core Files:**
-- `index.html` (26KB) - HTML markup only, references external resources
-- `styles.css` (27KB) - All CSS styles with mobile-first responsive design
+- `index.html` HTML markup only, references external resources
+- `styles.css` All CSS styles with mobile-first responsive design
 
 **JavaScript Modules (`js/` directory - 124KB total):**
-- `rooms-and-tasks.js` (2.3KB) - Game data constants (ROOMS_AND_TASKS)
-- `game-state.js` (2.1KB) - Global state object and Supabase configuration
-- `supabase-backend.js` (21KB) - Database operations and real-time subscriptions
-- `room-task-manager.js` (19KB) - Room/task CRUD, drag-drop, swipe-to-delete
-- `game-logic.js` (66KB) - All game flow functions (waiting room, gameplay, meetings, voting, session management)
-- `init.js` (2KB) - Application initialization
+- `rooms-and-tasks.js` - Game data constants (ROOMS_AND_TASKS)
+- `game-state.js` - Global state object and Supabase configuration
+- `supabase-backend.js` - Database operations and real-time subscriptions
+- `room-task-manager.js` - Room/task CRUD, drag-drop, swipe-to-delete
+- `game-logic.js` - All game flow functions (waiting room, gameplay, meetings, voting, session management)
+- `init.js` - Application initialization
 
 **Module Load Order:** Scripts must load in dependency order (as listed above).
 
 **Benefits:**
-- **For Claude Code**: 70-90% token reduction per task - work with specific 2-21KB modules instead of 174KB monolithic file
+- **For Claude Code**: Significant token reduction per task - work smart with specific smaller modules instead of a monolithic file
 - **For Users**: Better browser caching, parallel downloads, faster initial parse time
 - **For Developers**: Clear module boundaries, easier code navigation and maintenance
 
@@ -65,7 +65,7 @@ gameState = {
 ```
 
 ### Core Data Structure
-`ROOMS_AND_TASKS` constant (in `js/rooms-and-tasks.js`) contains 10 preset rooms with 28+ tasks:
+`ROOMS_AND_TASKS` constant (in `js/rooms-and-tasks.js`) contains preset rooms with several tasks per room:
 - Anywhere, Outside, Living Room, Kitchen, Garage
 - Bedrooms, Bathrooms, Closets, Office, Other
 
@@ -157,7 +157,7 @@ To enable multi-device support:
 - Unsubscribe when leaving/game ends
 - All devices see changes in real-time via WebSocket
 
-## Testing & Test-Driven Development
+## Testing & Test-Driven Development (TDD)
 
 This project maintains comprehensive unit test coverage using Vitest. All new features must include tests.
 
@@ -172,6 +172,8 @@ This project maintains comprehensive unit test coverage using Vitest. All new fe
 - **Total: 234 passing tests**
 
 **Running Tests:**
+- To reduce token usage, never run tests. 
+- Instead, prompt the user to run a test anytime you need to verify that tests are passing.
 ```bash
 npm test              # Run all tests once
 npm run test:watch    # Watch mode for development
@@ -182,7 +184,7 @@ npm run test:watch    # Watch mode for development
 When adding new features, follow this workflow:
 
 1. **Write Tests First** - Create test file for business logic functions
-2. **Run Tests** - Verify tests fail (red)
+2. **Run Tests** - Verify tests fail (red) by prompting the user to run the tests
 3. **Implement Feature** - Write minimal code to pass tests
 4. **Verify Tests Pass** - All 234+ tests green
 5. **Commit** - Include tests in the same commit as feature code

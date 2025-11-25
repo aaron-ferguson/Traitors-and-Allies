@@ -2065,6 +2065,7 @@ gameState.stage = 'waiting';
 gameState.winner = null;
 gameState.meetingCaller = null;
 gameState.meetingType = null;
+gameState.meetingReady = {};  // Reset meeting acknowledgments for new session
 gameState.roomCode = newRoomCode;
 gameState.hostName = null;  // Reset host so it can be set for new session
 
@@ -2180,9 +2181,10 @@ gameState.stage = 'setup';
 gameState.winner = null;
 gameState.meetingCaller = null;
 gameState.meetingType = null;
+gameState.meetingReady = {};  // Reset meeting acknowledgments for new session
 gameState.roomCode = '';
 gameState.hostName = null;  // Reset host so it can be set for new session
-currentGameId = null;  // Clear current game ID - new one will be created when host clicks "Create Game"
+setCurrentGameId(null);  // Clear current game ID - new one will be created when host clicks "Create Game"
 
 // Clear all game end UI
 document.getElementById('victory-screen').classList.add('hidden');
