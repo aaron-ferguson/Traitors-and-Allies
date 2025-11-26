@@ -23,6 +23,210 @@ import { ROOMS_AND_TASKS } from './rooms-and-tasks.js';
 // Track last rendered stage to avoid unnecessary DOM rebuilds that can reset scroll position
 let lastRenderedStage = null;
 
+// ==================== LOGGING SYSTEM ====================
+const LOG_LEVELS = {
+  ERROR: 0,
+  INFO: 1,
+  DEBUG: 2
+};
+
+let currentLogLevel = LOG_LEVELS.INFO;
+
+function setLogLevel(level) {
+  if (typeof level === 'string') {
+    currentLogLevel = LOG_LEVELS[level.toUpperCase()] ?? LOG_LEVELS.INFO;
+  } else {
+    currentLogLevel = level;
+  }
+  console.log(`Log level set to: ${Object.keys(LOG_LEVELS).find(k => LOG_LEVELS[k] === currentLogLevel)}`);
+}
+
+function logError(message, ...args) {
+  if (currentLogLevel >= LOG_LEVELS.ERROR) {
+    console.error(`[ERROR] ${message}`, ...args);
+  }
+}
+
+function logInfo(message, ...args) {
+  if (currentLogLevel >= LOG_LEVELS.INFO) {
+    console.log(`[INFO] ${message}`, ...args);
+  }
+}
+
+function logDebug(message, ...args) {
+  if (currentLogLevel >= LOG_LEVELS.DEBUG) {
+    console.log(`[DEBUG] ${message}`, ...args);
+  }
+}
+
+// Expose to window for runtime control
+if (typeof window !== 'undefined') {
+  window.setLogLevel = setLogLevel;
+}
+
+
+// ==================== SUBSCRIPTION MANAGER ====================
+// Centralized subscription lifecycle management
+class SubscriptionManager {
+  constructor() {
+    this.subscriptions = {
+      game: null,
+      players: null,
+      meetingReady: null
+    };
+  }
+
+  subscribe(type, channel) {
+    // Cleanup previous subscription if exists
+    if (this.subscriptions[type]) {
+      this.unsubscribe(type);
+    }
+
+    this.subscriptions[type] = channel;
+    logInfo(`✓ SubscriptionManager: Subscribed to ${type} channel`);
+  }
+
+  unsubscribe(type) {
+    if (this.subscriptions[type] && supabaseClient) {
+      supabaseClient.removeChannel(this.subscriptions[type]);
+      this.subscriptions[type] = null;
+      logInfo(`✓ SubscriptionManager: Unsubscribed from ${type} channel`);
+    }
+  }
+
+  unsubscribeAll() {
+    Object.keys(this.subscriptions).forEach(type => {
+      this.unsubscribe(type);
+    });
+    logInfo('✓ SubscriptionManager: All subscriptions cleaned up');
+  }
+
+  getSubscription(type) {
+    return this.subscriptions[type];
+  }
+
+  hasSubscription(type) {
+    return this.subscriptions[type] !== null;
+  }
+}
+
+// Global subscription manager instance
+const subscriptionManager = new SubscriptionManager();
+
+// ==================== UPDATE PROCESSING WITH SEQUENCE ORDERING ====================
+
+function processGameUpdate(newData) {
+  console.log('Processing game update - sequence:', newData.sequence_number);
+
+  // Update local state from DB
+  // Only update hostName if it's not null (prevent overwriting valid host with null)
+  if (newData.host_name !== null && newData.host_name !== undefined) {
+    gameState.hostName = newData.host_name;
+  }
+  gameState.stage = newData.stage;
+  console.log('Local stage updated to:', gameState.stage);
+
+  // Only update settings if they exist (prevent overwriting valid settings with null/undefined)
+  if (newData.settings !== null && newData.settings !== undefined) {
+    gameState.settings = newData.settings;
+
+    // Sync meetingType from settings if it exists
+    if (newData.settings.meetingType) {
+      gameState.meetingType = newData.settings.meetingType;
+    }
+
+    // Check for new game invitation (for non-host players only)
+    console.log('Checking for invitation - isHost:', isHost(), 'invitation:', newData.settings.newGameInvitation, 'myPlayerName:', myPlayerName);
+    if (!isHost() && newData.settings.newGameInvitation && myPlayerName) {
+      console.log('=== NEW GAME INVITATION DETECTED ===');
+      console.log('Invitation type:', newData.settings.newGameInvitation);
+
+      // Hide game end screen, waiting room, and show invitation modal
+      document.getElementById('game-end').classList.add('hidden');
+      document.getElementById('waiting-room').classList.add('hidden');
+      document.getElementById('new-game-invitation').classList.remove('hidden');
+      console.log('Invitation modal shown, game end and waiting room hidden');
+    }
+  }
+
+  gameState.meetingsUsed = newData.meetings_used;
+  gameState.gameEnded = newData.game_ended;
+  gameState.winner = newData.winner;
+
+  // Sync meeting-related state
+  if (newData.settings) {
+    gameState.meetingReady = newData.settings.meetingReady || {};
+    const incomingVotes = newData.settings.votes || {};
+    console.log('Syncing votes from database:', incomingVotes);
+    console.log('Vote count from database:', Object.keys(incomingVotes).length);
+    gameState.votes = incomingVotes;
+    gameState.votingStarted = newData.settings.votingStarted || false;
+    gameState.meetingCaller = newData.settings.meetingCaller;
+  }
+
+  // If voting has started and we're in discussion phase, start voting
+  if (gameState.votingStarted && !document.getElementById('voting-phase').classList.contains('hidden') === false) {
+    const discussionVisible = !document.getElementById('discussion-phase').classList.contains('hidden');
+    if (discussionVisible && !isHost()) {
+      startVoting();
+    }
+  }
+
+  // Update ready status if in discussion
+  if (!document.getElementById('discussion-phase').classList.contains('hidden')) {
+    updateReadyStatus();
+  }
+
+  // Check if we're in voting or waiting for results
+  const voteResultsVisible = !document.getElementById('vote-results').classList.contains('hidden');
+  const votingPhaseVisible = !document.getElementById('voting-phase').classList.contains('hidden');
+
+  if (voteResultsVisible || votingPhaseVisible) {
+    // Only count alive players for voting
+    const alivePlayers = gameState.players.filter(p => p.alive);
+    const totalAlivePlayers = alivePlayers.length;
+    const votesSubmitted = Object.keys(gameState.votes).length;
+
+    // Check if vote results are available - display them for ALL players
+    if (newData.settings && newData.settings.voteResults) {
+      console.log('Vote results received from database, displaying for all players...');
+      const { voteCounts, eliminatedPlayer, isTie } = newData.settings.voteResults;
+      displayVoteResults(voteCounts, eliminatedPlayer, isTie);
+    } else {
+      // Update vote count display for players on results screen
+      if (voteResultsVisible) {
+        const resultsDisplay = document.getElementById('results-display');
+        if (resultsDisplay) {
+          if (votesSubmitted < totalAlivePlayers && !gameState.votesTallied) {
+            resultsDisplay.innerHTML = `
+              <p style="color: #a0a0a0;">Votes submitted: ${votesSubmitted}/${totalAlivePlayers}</p>
+              <p style="color: #5eb3f6;">Waiting for all players to vote...</p>
+            `;
+          } else if (gameState.votesTallied && !newData.settings?.voteResults) {
+            resultsDisplay.innerHTML = `
+              <p style="color: #5eb3f6;">Tallying votes...</p>
+              <p style="color: #a0a0a0;">Syncing results...</p>
+            `;
+          }
+        }
+      }
+
+      // Host tallies votes when all ALIVE players have voted
+      if (isHost() && votesSubmitted === totalAlivePlayers && !gameState.votesTallied) {
+        console.log('All votes received, tallying... (host on', voteResultsVisible ? 'results' : 'voting', 'screen)');
+        tallyVotes();
+      }
+    }
+  }
+
+  // Update UI based on stage
+  console.log('Calling handleStageChange() with stage:', gameState.stage);
+  handleStageChange();
+
+  // Update host controls visibility
+  updateHostControls();
+}
+
 async function createGameInDB() {
 if (!supabaseClient) {
 console.warn('Supabase not configured - running in offline mode');
@@ -122,13 +326,13 @@ name: p.name,
 role: p.role,
 ready: p.ready,
 tasks: p.tasks || [],
-alive: p.alive,
+alive: Boolean(p.alive),
 tasksCompleted: p.tasks_completed || 0,
 votedFor: p.voted_for
 }));
 
 // Subscribe to realtime updates
-subscribeToGame();
+await subscribeToGame();
 subscribeToPlayers();
 
 console.log('Joined game from DB:', gameData.id);
@@ -177,7 +381,7 @@ console.log('gameState.stage:', gameState.stage);
 
 if (!supabaseClient || !currentGameId) {
 console.warn('Cannot update game in DB - missing supabaseClient or currentGameId');
-return;
+return { success: false, error: 'Missing supabaseClient or currentGameId' };
 }
 
 try {
@@ -215,13 +419,17 @@ winner: gameState.winner
 
 if (error) throw error;
 console.log('✓ Database updated successfully');
+return { success: true };
 } catch (error) {
 console.error('Error updating game:', error);
+return { success: false, error: error.message };
 }
 }
 
 async function updatePlayerInDB(playerName, updates) {
-if (!supabaseClient || !currentGameId) return;
+if (!supabaseClient || !currentGameId) {
+return { success: false, error: 'Missing supabaseClient or currentGameId' };
+}
 
 try {
 const { error } = await supabaseClient
@@ -231,15 +439,17 @@ const { error } = await supabaseClient
 .eq('name', playerName);
 
 if (error) throw error;
+return { success: true };
 } catch (error) {
 console.error('Error updating player:', error);
+return { success: false, error: error.message };
 }
 }
 
 async function removePlayerFromDB(playerName) {
 if (!supabaseClient || !currentGameId) {
 console.warn('Cannot remove player from DB - supabaseClient or currentGameId missing');
-return;
+return { success: false, error: 'Missing supabaseClient or currentGameId' };
 }
 
 try {
@@ -253,20 +463,17 @@ const { error } = await supabaseClient
 
 if (error) throw error;
 console.log('Player deleted from DB successfully');
+return { success: true };
 } catch (error) {
 console.error('Error removing player:', error);
+return { success: false, error: error.message };
 }
 }
 
-function subscribeToGame() {
+async function subscribeToGame() {
 if (!supabaseClient || !currentGameId) return;
 
-// Unsubscribe from previous channel if exists
-if (gameChannel) {
-supabaseClient.removeChannel(gameChannel);
-}
-
-setGameChannel(supabaseClient
+const channel = supabaseClient
 .channel(`game:${currentGameId}`)
 .on('postgres_changes',
 {
@@ -276,128 +483,14 @@ table: 'games',
 filter: `id=eq.${currentGameId}`
 },
 (payload) => {
-console.log('=== GAME UPDATE RECEIVED ===');
-console.log('Full payload:', payload);
-const newData = payload.new;
-console.log('New stage from DB:', newData.stage);
-console.log('Current local stage:', gameState.stage);
-
-// Update local state from DB
-// Only update hostName if it's not null (prevent overwriting valid host with null)
-if (newData.host_name !== null && newData.host_name !== undefined) {
-gameState.hostName = newData.host_name;
-}
-gameState.stage = newData.stage;
-console.log('Local stage updated to:', gameState.stage);
-
-// Only update settings if they exist (prevent overwriting valid settings with null/undefined)
-if (newData.settings !== null && newData.settings !== undefined) {
-gameState.settings = newData.settings;
-
-// Sync meetingType from settings if it exists
-if (newData.settings.meetingType) {
-gameState.meetingType = newData.settings.meetingType;
-}
-
-// Check for new game invitation (for non-host players only)
-console.log('Checking for invitation - isHost:', isHost(), 'invitation:', newData.settings.newGameInvitation, 'myPlayerName:', myPlayerName);
-if (!isHost() && newData.settings.newGameInvitation && myPlayerName) {
-console.log('=== NEW GAME INVITATION DETECTED ===');
-console.log('Invitation type:', newData.settings.newGameInvitation);
-
-// Hide game end screen, waiting room, and show invitation modal
-// This ensures players can see the invitation even if they're viewing game summary
-document.getElementById('game-end').classList.add('hidden');
-document.getElementById('waiting-room').classList.add('hidden');
-document.getElementById('new-game-invitation').classList.remove('hidden');
-console.log('Invitation modal shown, game end and waiting room hidden');
-}
-}
-
-gameState.meetingsUsed = newData.meetings_used;
-gameState.gameEnded = newData.game_ended;
-gameState.winner = newData.winner;
-
-// Sync meeting-related state
-if (newData.settings) {
-gameState.meetingReady = newData.settings.meetingReady || {};
-const incomingVotes = newData.settings.votes || {};
-console.log('Syncing votes from database:', incomingVotes);
-console.log('Vote count from database:', Object.keys(incomingVotes).length);
-gameState.votes = incomingVotes;
-gameState.votingStarted = newData.settings.votingStarted || false;
-gameState.meetingCaller = newData.settings.meetingCaller;
-}
-
-// If voting has started and we're in discussion phase, start voting
-if (gameState.votingStarted && !document.getElementById('voting-phase').classList.contains('hidden') === false) {
-const discussionVisible = !document.getElementById('discussion-phase').classList.contains('hidden');
-if (discussionVisible && !isHost()) {
-startVoting();
-}
-}
-
-// Update ready status if in discussion
-if (!document.getElementById('discussion-phase').classList.contains('hidden')) {
-updateReadyStatus();
-}
-
-// Check if we're in voting or waiting for results
-const voteResultsVisible = !document.getElementById('vote-results').classList.contains('hidden');
-const votingPhaseVisible = !document.getElementById('voting-phase').classList.contains('hidden');
-
-if (voteResultsVisible || votingPhaseVisible) {
-// Only count alive players for voting
-const alivePlayers = gameState.players.filter(p => p.alive);
-const totalAlivePlayers = alivePlayers.length;
-const votesSubmitted = Object.keys(gameState.votes).length;
-
-// Check if vote results are available - display them for ALL players (including host and eliminated)
-// This creates a centralized, event-driven architecture where all players react to database state equally
-if (newData.settings && newData.settings.voteResults) {
-console.log('Vote results received from database, displaying for all players...');
-const { voteCounts, eliminatedPlayer, isTie } = newData.settings.voteResults;
-displayVoteResults(voteCounts, eliminatedPlayer, isTie);
-} else {
-// Update vote count display for players on results screen (if applicable)
-if (voteResultsVisible) {
-const resultsDisplay = document.getElementById('results-display');
-if (resultsDisplay) {
-if (votesSubmitted < totalAlivePlayers && !gameState.votesTallied) {
-// Still waiting for all votes to come in
-resultsDisplay.innerHTML = `
-<p style="color: #a0a0a0;">Votes submitted: ${votesSubmitted}/${totalAlivePlayers}</p>
-<p style="color: #5eb3f6;">Waiting for all players to vote...</p>
-`;
-} else if (gameState.votesTallied && !newData.settings?.voteResults) {
-// Votes have been tallied locally, waiting for database sync
-resultsDisplay.innerHTML = `
-<p style="color: #5eb3f6;">Tallying votes...</p>
-<p style="color: #a0a0a0;">Syncing results...</p>
-`;
-}
-}
-}
-
-// Host tallies votes when all ALIVE players have voted (works whether host is on voting or results screen)
-if (isHost() && votesSubmitted === totalAlivePlayers && !gameState.votesTallied) {
-// All votes are in! Tally them
-console.log('All votes received, tallying... (host on', voteResultsVisible ? 'results' : 'voting', 'screen)');
-tallyVotes();
-}
-}
-}
-
-// Update UI based on stage
-console.log('Calling handleStageChange() with stage:', gameState.stage);
-handleStageChange();
-
-// Update host controls visibility
-updateHostControls();
+logDebug('=== GAME UPDATE RECEIVED ===');
+processGameUpdate(payload.new);
 }
 )
-.subscribe());
+.subscribe();
 
+subscriptionManager.subscribe('game', channel);
+setGameChannel(channel);
 console.log('Subscribed to game updates');
 }
 
@@ -411,13 +504,7 @@ console.warn('Cannot subscribe to players - missing supabaseClient or currentGam
 return;
 }
 
-// Unsubscribe from previous channel if exists
-if (playersChannel) {
-console.log('Removing previous players channel');
-supabaseClient.removeChannel(playersChannel);
-}
-
-setPlayersChannel(supabaseClient
+const channel = supabaseClient
 .channel(`players:${currentGameId}`)
 .on('postgres_changes',
 {
@@ -432,18 +519,16 @@ console.log('Players changed:', payload);
 handlePlayerChange(payload);
 }
 )
-.subscribe());
+.subscribe();
 
+subscriptionManager.subscribe('players', channel);
+setPlayersChannel(channel);
 console.log('✓ Subscribed to player updates for game:', currentGameId);
 }
 
 function cleanupMeetingSubscription() {
-if (gameState.meetingReadySubscription) {
-console.log('Cleaning up meeting ready subscription...');
-supabaseClient.removeChannel(gameState.meetingReadySubscription);
+subscriptionManager.unsubscribe('meetingReady');
 gameState.meetingReadySubscription = null;
-console.log('✓ Meeting ready subscription cancelled');
-}
 }
 
 function subscribeToMeetingReady() {
@@ -496,6 +581,8 @@ window.checkAllPlayersReady();
 )
 .subscribe();
 
+subscriptionManager.subscribe('meetingReady', meetingReadyChannel);
+gameState.meetingReadySubscription = meetingReadyChannel;
 console.log('✓ Subscribed to meeting ready status for game:', currentGameId);
 return meetingReadyChannel;
 }
@@ -571,7 +658,7 @@ name: newData.name,
 role: newData.role,
 ready: newData.ready,
 tasks: newData.tasks || [],
-alive: newData.alive,
+alive: Boolean(newData.alive),
 tasksCompleted: newData.tasks_completed || 0,
 votedFor: newData.voted_for
 });
@@ -595,7 +682,7 @@ name: newData.name,
 role: newData.role,
 ready: newData.ready,
 tasks: newData.tasks !== undefined && newData.tasks !== null ? newData.tasks : existingPlayer.tasks,
-alive: newData.alive,
+alive: Boolean(newData.alive),
 tasksCompleted: newData.tasks_completed !== undefined ? newData.tasks_completed : existingPlayer.tasksCompleted,
 votedFor: newData.voted_for !== undefined ? newData.voted_for : existingPlayer.votedFor,
 emergencyMeetingsUsed: newData.emergency_meetings_used !== undefined ? newData.emergency_meetings_used : existingPlayer.emergencyMeetingsUsed
@@ -622,6 +709,24 @@ console.log('Current myPlayerName:', myPlayerName);
 
 const playerIndex = gameState.players.findIndex(p => p.name === oldData.name);
 if (playerIndex !== -1) {
+// CRITICAL: Don't remove players during ENTIRE meeting phase to prevent race condition
+// This protects both meeting discussion (ready count) AND voting (vote count)
+// The voting snapshot will handle graceful degradation if player leaves
+if (gameState.stage === 'meeting') {
+  console.warn('⚠️  Cannot remove player during meeting phase:', oldData.name);
+  console.warn('Player will be removed after meeting completes');
+
+  // Mark player for deferred removal but don't remove yet
+  gameState.players[playerIndex].pendingRemoval = true;
+
+  // If it's this device's player, still redirect them
+  if (oldData.name === myPlayerName && !isHost()) {
+    alert('You have been removed from the game by the host.');
+    returnToMenu();
+  }
+  return;  // Don't remove from array yet
+}
+
 gameState.players.splice(playerIndex, 1);
 
 // Check if the deleted player is this device's player
@@ -806,16 +911,97 @@ document.getElementById('non-host-game-controls').classList.remove('hidden');
 }
 
 function unsubscribeFromChannels() {
-if (gameChannel) {
-supabaseClient.removeChannel(gameChannel);
+subscriptionManager.unsubscribeAll();
 setGameChannel(null);
-}
-if (playersChannel) {
-supabaseClient.removeChannel(playersChannel);
 setPlayersChannel(null);
+gameState.meetingReadySubscription = null;
 }
-// Also cleanup meeting ready subscription
-cleanupMeetingSubscription();
+
+// ==================== ATOMIC OPERATIONS ====================
+// These functions use database-level row locking to prevent race conditions
+
+async function clearMeetingStateAtomic() {
+  if (!supabaseClient || !currentGameId) {
+    return { success: false, error: 'Missing supabaseClient or currentGameId' };
+  }
+
+  try {
+    const { error } = await supabaseClient.rpc('clear_meeting_state', {
+      game_uuid: currentGameId
+    });
+
+    if (error) throw error;
+
+    logInfo('✓ Meeting state cleared atomically');
+    return { success: true };
+  } catch (error) {
+    logError('Error clearing meeting state:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function batchUpdatePlayersAtomic(playerUpdates) {
+  if (!supabaseClient || !currentGameId) {
+    return { success: false, error: 'Missing supabaseClient or currentGameId' };
+  }
+
+  try {
+    const { error } = await supabaseClient.rpc('batch_update_players', {
+      game_uuid: currentGameId,
+      player_updates: playerUpdates
+    });
+
+    if (error) throw error;
+
+    logInfo('✓ Batch player updates completed atomically');
+    return { success: true };
+  } catch (error) {
+    logError('Error batch updating players:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function submitVoteAtomic(playerName, voteValue) {
+  if (!supabaseClient || !currentGameId) {
+    return { success: false, error: 'Missing client or game ID' };
+  }
+
+  try {
+    const { data, error } = await supabaseClient.rpc('submit_vote', {
+      game_uuid: currentGameId,
+      player_name: playerName,
+      vote_value: voteValue
+    });
+
+    if (error) throw error;
+
+    logInfo(`✓ Vote submitted atomically: ${playerName} -> ${voteValue}`);
+    return { success: true, votes: data };
+  } catch (error) {
+    logError('✗ Error submitting vote:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function acknowledgeMeetingAtomic(playerName) {
+  if (!supabaseClient || !currentGameId) {
+    return { success: false, error: 'Missing client or game ID' };
+  }
+
+  try {
+    const { data, error } = await supabaseClient.rpc('acknowledge_meeting', {
+      game_uuid: currentGameId,
+      player_name: playerName
+    });
+
+    if (error) throw error;
+
+    logInfo(`✓ Meeting ready acknowledged atomically: ${playerName}`);
+    return { success: true, meetingReady: data };
+  } catch (error) {
+    logError('✗ Error acknowledging meeting:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 // Export for testing and module usage
@@ -826,6 +1012,10 @@ export {
   updateGameInDB,
   updatePlayerInDB,
   removePlayerFromDB,
+  clearMeetingStateAtomic,
+  batchUpdatePlayersAtomic,
+  submitVoteAtomic,
+  acknowledgeMeetingAtomic,
   subscribeToGame,
   subscribeToPlayers,
   subscribeToMeetingReady,

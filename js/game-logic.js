@@ -19,6 +19,8 @@ import {
   updateGameInDB,
   updatePlayerInDB,
   removePlayerFromDB,
+  clearMeetingStateAtomic,
+  batchUpdatePlayersAtomic,
   subscribeToGame,
   subscribeToPlayers,
   cleanupMeetingSubscription,
@@ -28,6 +30,14 @@ import {
 
 // Track voting timer to allow cleanup when votes are tallied early
 let votingTimerInterval = null;
+
+// CRITICAL: Snapshot of players who should vote (prevents race condition when players removed during voting)
+let votingPlayerSnapshot = null;
+
+// Setter for votingPlayerSnapshot (needed for ES modules and testing)
+function setVotingPlayerSnapshot(snapshot) {
+  votingPlayerSnapshot = snapshot;
+}
 
 // ==================== MENU NAVIGATION ====================
 
@@ -877,15 +887,20 @@ displayGameplay();
 console.log('Calling updateGameInDB() to sync stage to database...');
 updateGameInDB();
 
-// Update all players with their roles/tasks in database
+// Update all players with their roles/tasks in database atomically
 if (supabaseClient && currentGameId) {
-gameState.players.forEach(player => {
-updatePlayerInDB(player.name, {
+const playerUpdates = gameState.players.map(player => ({
+name: player.name,
 role: player.role,
 tasks: player.tasks,
 alive: player.alive,
 tasks_completed: player.tasksCompleted
-});
+}));
+
+batchUpdatePlayersAtomic(playerUpdates).then(result => {
+if (!result.success) {
+console.error('Failed to batch update players:', result.error);
+}
 });
 }
 }
@@ -1347,10 +1362,11 @@ function checkAllPlayersReady() {
   // Only run on host
   if (!isHost()) return;
 
-  const alivePlayers = gameState.players.filter(p => p.alive);
+  // Exclude players marked for pending removal during meeting
+  const alivePlayers = gameState.players.filter(p => p.alive && !p.pendingRemoval);
   const readyCount = Object.keys(gameState.meetingReady || {}).filter(name => {
     const player = gameState.players.find(p => p.name === name);
-    return player && player.alive;
+    return player && player.alive && !player.pendingRemoval;
   }).length;
 
   if (readyCount === alivePlayers.length && alivePlayers.length > 0) {
@@ -1444,12 +1460,12 @@ await updatePlayerInDB(playerName, { alive: player.alive });
 }
 
 function updateReadyStatus() {
-// Count alive players for voting purposes
-const alivePlayers = gameState.players.filter(p => p.alive);
+// Count alive players for voting purposes, excluding those marked for removal
+const alivePlayers = gameState.players.filter(p => p.alive && !p.pendingRemoval);
 const totalAliveCount = alivePlayers.length;
 const aliveReadyCount = Object.keys(gameState.meetingReady || {}).filter(playerName => {
 const player = gameState.players.find(p => p.name === playerName);
-return player && player.alive;
+return player && player.alive && !player.pendingRemoval;
 }).length;
 
 document.getElementById('ready-for-vote-count').textContent = aliveReadyCount;
@@ -1485,6 +1501,14 @@ gameState.votingStarted = true;
 gameState.votes = {};
 gameState.votesTallied = false; // Reset for new voting session
 gameState.settings.voteResults = null; // Clear old vote results from previous meeting
+
+// CRITICAL: Snapshot alive players when voting starts
+// This prevents race condition where player count changes during voting
+votingPlayerSnapshot = gameState.players
+  .filter(p => p.alive)
+  .map(p => p.name);
+
+console.log('Voting started - player snapshot:', votingPlayerSnapshot);
 
 // Sync to database to notify all players
 if (supabaseClient && currentGameId) {
@@ -1767,23 +1791,31 @@ console.log('❌ Already tallied, returning early');
 return;
 }
 
-// Check if all alive players have voted
-const alivePlayers = gameState.players.filter(p => p.alive === true);
+// CRITICAL: Use snapshot instead of current player list to prevent race condition
+// If player is removed during voting, we still expect their vote OR auto-skip them
+const expectedVoters = votingPlayerSnapshot ||
+  gameState.players.filter(p => p.alive).map(p => p.name);
 const votesSubmitted = Object.keys(gameState.votes).length;
 
-console.log('Alive players:', alivePlayers.map(p => p.name));
-console.log('Alive player count:', alivePlayers.length);
+console.log('Expected voters (snapshot):', expectedVoters);
+console.log('Current players:', gameState.players.map(p => p.name));
 console.log('Votes submitted count:', votesSubmitted);
 console.log('Players who voted:', Object.keys(gameState.votes));
 
-if (votesSubmitted < alivePlayers.length) {
-console.warn(`❌ Cannot tally: Only ${votesSubmitted} of ${alivePlayers.length} alive players have voted`);
-const missingVoters = alivePlayers.filter(p => !gameState.votes[p.name]);
-console.warn('Missing votes from:', missingVoters.map(p => p.name));
-return; // Don't tally until all alive players have voted
+// Only tally if all expected voters have voted OR have been removed from game
+// CRITICAL: Exclude players marked for pendingRemoval (kicked during voting)
+const activeVoters = expectedVoters.filter(name => {
+  const player = gameState.players.find(p => p.name === name);
+  return player && !player.pendingRemoval;
+});
+const missingVotes = activeVoters.filter(name => !gameState.votes[name]);
+
+if (missingVotes.length > 0) {
+  console.warn(`❌ Cannot tally: Waiting for votes from:`, missingVotes);
+  return; // Don't tally until all active voters have voted
 }
 
-console.log('✅ All alive players have voted, proceeding with tally...');
+console.log('✅ All active voters have voted, proceeding with tally...');
 
 // Clear voting timer if it's still running (everyone voted before time expired)
 if (votingTimerInterval !== null) {
@@ -1793,6 +1825,10 @@ votingTimerInterval = null;
 }
 
 gameState.votesTallied = true;
+
+// Clear snapshot after tallying
+console.log('Clearing voting player snapshot after tally');
+votingPlayerSnapshot = null;
 
 const voteCounts = {};
 Object.values(gameState.votes).forEach(vote => {
@@ -1995,7 +2031,7 @@ console.log('WIN CONDITION: None met, game continues');
 return null;
 }
 
-function resumeGame() {
+async function resumeGame() {
 // Only host can resume the game (button is disabled for non-hosts)
 if (!isHost()) {
 return;
@@ -2016,7 +2052,7 @@ document.getElementById('discussion-phase').classList.add('hidden');
 document.getElementById('game-phase').classList.remove('hidden');
 gameState.stage = 'playing';
 
-// Reset meeting state
+// Reset meeting state locally
 gameState.meetingReady = {};
 gameState.votes = {};
 gameState.votingStarted = false;
@@ -2026,8 +2062,24 @@ gameState.meetingCaller = null;
 gameState.settings.voteResults = null; // Clear vote results
 selectedVote = null;
 
-// Update database
+// Clear voting player snapshot when returning to game
+console.log('Clearing voting player snapshot on game resume');
+votingPlayerSnapshot = null;
+
+// Clean up players marked for deferred removal during voting
+const playersToRemove = gameState.players.filter(p => p.pendingRemoval);
+if (playersToRemove.length > 0) {
+  console.log('Removing players marked for deferred removal:', playersToRemove.map(p => p.name));
+  gameState.players = gameState.players.filter(p => !p.pendingRemoval);
+}
+
+// Clear meeting state atomically in database first
 if (supabaseClient && currentGameId) {
+const result = await clearMeetingStateAtomic();
+if (!result.success) {
+console.error('Failed to clear meeting state:', result.error);
+}
+// Then update other game state
 updateGameInDB();
 }
 
@@ -2047,6 +2099,12 @@ if (votingTimerInterval !== null) {
 console.log('⏱️  Clearing voting timer (game ended during voting)');
 clearInterval(votingTimerInterval);
 votingTimerInterval = null;
+}
+
+// Cleanup all subscriptions
+if (supabaseClient) {
+console.log('Cleaning up subscriptions on game end');
+unsubscribeFromChannels();
 }
 
 // Update game state
@@ -2321,7 +2379,7 @@ document.getElementById('waiting-room').classList.remove('hidden');
 
 // Subscribe to new game channels
 if (supabaseClient && currentGameId) {
-subscribeToGame();
+await subscribeToGame();
 subscribeToPlayers();
 }
 
@@ -2630,6 +2688,8 @@ export {
   declineJoinGame,
   acceptNewGameInvitation,
   declineNewGameInvitation,
-  newGameNewSettings
+  newGameNewSettings,
+  votingPlayerSnapshot,
+  setVotingPlayerSnapshot
 };
 

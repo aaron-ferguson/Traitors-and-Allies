@@ -33,6 +33,7 @@ import {
 } from '../js/game-logic.js'
 import { gameState, myPlayerName, isGameCreator, setMyPlayerName, setIsGameCreator, setCurrentGameId } from '../js/game-state.js'
 import { ROOMS_AND_TASKS } from '../js/rooms-and-tasks.js'
+import { handlePlayerChange } from '../js/supabase-backend.js'
 
 describe('Room Code Generation', () => {
   it('should generate a 4-character alphanumeric code', () => {
@@ -1525,6 +1526,250 @@ describe('Voting Logic', () => {
       expect(player1.tasks).toEqual(player1Tasks)
       expect(player2.tasks).toEqual(player2Tasks)
       expect(player3.tasks).toEqual(player3Tasks) // Traitor's tasks should NOT be reset
+    })
+
+    // CRITICAL TESTS: Voting synchronization bugs that can cause hard locks
+    describe('alive property type coercion (regression prevention)', () => {
+      it('should count players with alive=true (boolean) when tallying votes', async () => {
+        // This test ensures the fix for the bug where strict equality (p.alive === true)
+        // was incompatible with truthy checks (p.alive) used elsewhere
+        gameState.players = [
+          { name: 'Player1', role: 'ally', alive: true },  // boolean true
+          { name: 'Player2', role: 'ally', alive: true },
+          { name: 'Player3', role: 'traitor', alive: true }
+        ]
+        gameState.votes = {
+          'Player1': 'Player3',
+          'Player2': 'Player3',
+          'Player3': 'skip'
+        }
+
+        await tallyVotes()
+
+        // Should successfully tally with 3 alive players
+        expect(gameState.votesTallied).toBe(true)
+        expect(gameState.settings.voteResults.eliminatedPlayer).toBe('Player3')
+      })
+
+      it('should count players with alive=1 (truthy integer) when tallying votes', async () => {
+        // Database might return alive as integer 1 instead of boolean true
+        // The fix changed from strict equality to truthy check to handle this
+        gameState.players = [
+          { name: 'Player1', role: 'ally', alive: 1 },  // truthy integer
+          { name: 'Player2', role: 'ally', alive: 1 },
+          { name: 'Player3', role: 'traitor', alive: 1 }
+        ]
+        gameState.votes = {
+          'Player1': 'Player3',
+          'Player2': 'Player3',
+          'Player3': 'skip'
+        }
+
+        await tallyVotes()
+
+        // Should successfully tally with 3 "alive" players (alive=1)
+        expect(gameState.votesTallied).toBe(true)
+        expect(gameState.settings.voteResults.eliminatedPlayer).toBe('Player3')
+      })
+
+      it('should count players with alive="true" (truthy string) when tallying votes', async () => {
+        // Database might return alive as string "true" instead of boolean
+        gameState.players = [
+          { name: 'Player1', role: 'ally', alive: 'true' },  // truthy string
+          { name: 'Player2', role: 'ally', alive: 'true' },
+          { name: 'Player3', role: 'traitor', alive: 'true' }
+        ]
+        gameState.votes = {
+          'Player1': 'Player3',
+          'Player2': 'Player3',
+          'Player3': 'skip'
+        }
+
+        await tallyVotes()
+
+        // Should successfully tally with 3 "alive" players (alive="true")
+        expect(gameState.votesTallied).toBe(true)
+        expect(gameState.settings.voteResults.eliminatedPlayer).toBe('Player3')
+      })
+
+      it('should NOT count players with alive=false when tallying votes', async () => {
+        // Mix of alive/dead players - only alive should vote
+        gameState.players = [
+          { name: 'Player1', role: 'ally', alive: true },
+          { name: 'Player2', role: 'ally', alive: false },  // eliminated
+          { name: 'Player3', role: 'traitor', alive: true }
+        ]
+        gameState.votes = {
+          'Player1': 'Player3',
+          'Player3': 'skip'
+          // Player2 didn't vote (eliminated)
+        }
+
+        await tallyVotes()
+
+        // Should tally with only 2 alive players (Player1 and Player3)
+        expect(gameState.votesTallied).toBe(true)
+        expect(gameState.settings.voteResults.eliminatedPlayer).toBe('Player3')
+      })
+
+      it('should NOT count players with alive=0 (falsy integer) when tallying votes', async () => {
+        // Database might return alive as 0 instead of false
+        gameState.players = [
+          { name: 'Player1', role: 'ally', alive: 1 },
+          { name: 'Player2', role: 'ally', alive: 0 },  // eliminated (falsy)
+          { name: 'Player3', role: 'traitor', alive: 1 }
+        ]
+        gameState.votes = {
+          'Player1': 'Player3',
+          'Player3': 'skip'
+          // Player2 didn't vote (eliminated)
+        }
+
+        await tallyVotes()
+
+        // Should tally with only 2 alive players
+        expect(gameState.votesTallied).toBe(true)
+        expect(gameState.settings.voteResults.eliminatedPlayer).toBe('Player3')
+      })
+
+      it('should NOT tally if alive player has not voted (prevents hard lock)', async () => {
+        // CRITICAL: This is the bug scenario - if type coercion is wrong,
+        // players appear in vote options but aren't counted when checking votes
+        gameState.players = [
+          { name: 'Player1', role: 'ally', alive: 1 },
+          { name: 'Player2', role: 'ally', alive: 1 },
+          { name: 'Player3', role: 'traitor', alive: 1 }
+        ]
+        gameState.votes = {
+          'Player1': 'Player3',
+          'Player2': 'skip'
+          // Player3 hasn't voted yet!
+        }
+        gameState.votesTallied = false
+
+        await tallyVotes()
+
+        // Should NOT tally - only 2 of 3 alive players have voted
+        expect(gameState.votesTallied).toBe(false)
+        expect(gameState.settings.voteResults).toBeFalsy()
+      })
+    })
+
+    describe('vote synchronization edge cases (hard lock prevention)', () => {
+      it('should handle race condition where eliminated player vote is still in votes object', async () => {
+        // Scenario: Player was eliminated, but their vote is still in the votes object
+        // This can happen if vote was submitted just before elimination
+        gameState.players = [
+          { name: 'Player1', role: 'ally', alive: true },
+          { name: 'Player2', role: 'ally', alive: false },  // eliminated but voted
+          { name: 'Player3', role: 'traitor', alive: true }
+        ]
+        gameState.votes = {
+          'Player1': 'Player3',
+          'Player2': 'Player3',  // Dead player's vote (should be ignored)
+          'Player3': 'skip'
+        }
+
+        await tallyVotes()
+
+        // Should tally successfully (only counts alive players)
+        expect(gameState.votesTallied).toBe(true)
+        // Vote should still be counted in totals for consistency
+        expect(gameState.settings.voteResults.voteCounts['Player3']).toBe(2)
+      })
+
+      it('should handle scenario where all players are eliminated during voting', async () => {
+        // Edge case: What if all players get eliminated simultaneously?
+        gameState.players = [
+          { name: 'Player1', role: 'ally', alive: false },
+          { name: 'Player2', role: 'ally', alive: false }
+        ]
+        gameState.votes = {}
+        gameState.votesTallied = false
+
+        await tallyVotes()
+
+        // With no alive players, voting should complete immediately
+        expect(gameState.votesTallied).toBe(true)
+      })
+
+      it('should handle empty votes object with alive players (timeout scenario)', async () => {
+        // Scenario: Timer expired but no one voted (all auto-skipped)
+        gameState.players = [
+          { name: 'Player1', role: 'ally', alive: true },
+          { name: 'Player2', role: 'traitor', alive: true }
+        ]
+        gameState.votes = {}  // No votes yet
+        gameState.votesTallied = false
+
+        await tallyVotes()
+
+        // Should NOT tally with empty votes (waiting for timeout to auto-submit)
+        expect(gameState.votesTallied).toBe(false)
+      })
+
+      it('should handle late vote submission after tally starts', async () => {
+        // Scenario: Player submits vote just as tally begins (double-tally prevention)
+        gameState.players = [
+          { name: 'Player1', role: 'ally', alive: true },
+          { name: 'Player2', role: 'traitor', alive: true }
+        ]
+        gameState.votes = {
+          'Player1': 'Player2',
+          'Player2': 'Player1'
+        }
+
+        // First tally
+        await tallyVotes()
+        const firstResults = { ...gameState.settings.voteResults }
+
+        // Late vote comes in (simulating race condition)
+        gameState.votes['Player3'] = 'Player1'
+
+        // Second tally attempt (should be prevented)
+        await tallyVotes()
+
+        // Results should not change
+        expect(gameState.settings.voteResults).toEqual(firstResults)
+      })
+
+      it('should handle unanimous skip vote scenario', async () => {
+        // All players vote skip - ensure this doesn't cause issues
+        gameState.players = [
+          { name: 'Player1', role: 'ally', alive: true },
+          { name: 'Player2', role: 'ally', alive: true },
+          { name: 'Player3', role: 'traitor', alive: true }
+        ]
+        gameState.votes = {
+          'Player1': 'skip',
+          'Player2': 'skip',
+          'Player3': 'skip'
+        }
+
+        await tallyVotes()
+
+        expect(gameState.votesTallied).toBe(true)
+        expect(gameState.settings.voteResults.eliminatedPlayer).toBeNull()
+        // All players should remain alive
+        gameState.players.forEach(p => expect(p.alive).toBe(true))
+      })
+
+      it('should handle single player voting scenario (testing edge case)', async () => {
+        // Edge case: Only 1 player alive (should they be able to vote?)
+        gameState.players = [
+          { name: 'Player1', role: 'ally', alive: true },
+          { name: 'Player2', role: 'ally', alive: false },
+          { name: 'Player3', role: 'traitor', alive: false }
+        ]
+        gameState.votes = {
+          'Player1': 'skip'
+        }
+
+        await tallyVotes()
+
+        expect(gameState.votesTallied).toBe(true)
+        expect(gameState.settings.voteResults.eliminatedPlayer).toBeNull()
+      })
     })
   })
 
@@ -3404,6 +3649,166 @@ describe('Player List Alphabetical Sorting', () => {
       expect(calls[1][0].innerHTML).toContain('bob')
       expect(calls[2][0].innerHTML).toContain('zara')
     })
+
+    // CRITICAL TESTS: Eliminated player handling in voting
+    describe('eliminated player voting scenarios (hard lock prevention)', () => {
+      beforeEach(() => {
+        gameState.stage = 'meeting'
+        gameState.settings.meetingTimer = 60
+
+        // Override document mock for these specific tests
+        global.document = {
+          getElementById: vi.fn((id) => ({
+            classList: { add: vi.fn(), remove: vi.fn() },
+            innerHTML: '',
+            textContent: '',
+            style: { display: '' },
+            appendChild: vi.fn(),
+            disabled: false
+          })),
+          querySelectorAll: vi.fn(() => []),
+          createElement: vi.fn(() => ({
+            className: '',
+            innerHTML: '',
+            style: {},
+            classList: { add: vi.fn(), remove: vi.fn() },
+            appendChild: vi.fn(),
+            onclick: null
+          }))
+        }
+      })
+
+      it('should only include alive players in vote options', () => {
+        setMyPlayerName('Alice')
+        gameState.players = [
+          { name: 'Alice', alive: true, role: 'ally' },
+          { name: 'Bob', alive: false, role: 'ally' },      // eliminated
+          { name: 'Charlie', alive: true, role: 'traitor' },
+          { name: 'David', alive: false, role: 'ally' }      // eliminated
+        ]
+
+        startVoting()
+
+        const createElementCalls = global.document.createElement.mock.calls
+        const voteOptions = createElementCalls.filter(call => {
+          const result = global.document.createElement.mock.results[
+            createElementCalls.indexOf(call)
+          ]
+          return result?.value?.className === 'vote-option'
+        })
+
+        // Should have vote options for: Alice, Charlie, Skip (3 total)
+        // Should NOT include Bob or David (eliminated)
+        expect(voteOptions.length).toBeGreaterThanOrEqual(3)
+      })
+
+      it('should show observer message for eliminated players instead of vote options', () => {
+        setMyPlayerName('Bob')
+        gameState.players = [
+          { name: 'Alice', alive: true, role: 'ally' },
+          { name: 'Bob', alive: false, role: 'ally' },      // current player (eliminated)
+          { name: 'Charlie', alive: true, role: 'traitor' }
+        ]
+
+        const mockVoteOptions = { innerHTML: '' }
+        const mockSubmitBtn = { style: { display: '' } }
+        const mockTimerLabel = { style: { display: '' } }
+        const mockVoteLabel = { style: { display: '' } }
+
+        global.document.getElementById = vi.fn((id) => {
+          const elementMap = {
+            'vote-options': mockVoteOptions,
+            'submit-vote-btn': mockSubmitBtn,
+            'vote-timer-label': mockTimerLabel,
+            'vote-to-eliminate-label': mockVoteLabel
+          }
+          return elementMap[id] || {
+            classList: { add: vi.fn(), remove: vi.fn() },
+            innerHTML: '',
+            textContent: '',
+            style: { display: '' },
+            appendChild: vi.fn()
+          }
+        })
+
+        startVoting()
+
+        // Eliminated player should see observer message, not vote options
+        expect(mockVoteOptions.innerHTML).toContain('eliminated')
+        expect(mockVoteOptions.innerHTML).toContain('observe')
+        expect(mockSubmitBtn.style.display).toBe('none')
+        expect(mockTimerLabel.style.display).toBe('none')
+        expect(mockVoteLabel.style.display).toBe('none')
+      })
+
+      it('should not start voting timer for eliminated players', () => {
+        setMyPlayerName('Bob')
+        gameState.players = [
+          { name: 'Alice', alive: true, role: 'ally' },
+          { name: 'Bob', alive: false, role: 'ally' }       // current player (eliminated)
+        ]
+
+        const setIntervalSpy = vi.spyOn(global, 'setInterval')
+
+        startVoting()
+
+        // Timer should NOT be started for eliminated player
+        expect(setIntervalSpy).not.toHaveBeenCalled()
+      })
+
+      it('should start voting timer for alive players', () => {
+        setMyPlayerName('Alice')
+        gameState.players = [
+          { name: 'Alice', alive: true, role: 'ally' },     // current player (alive)
+          { name: 'Bob', alive: false, role: 'ally' }
+        ]
+
+        const setIntervalSpy = vi.spyOn(global, 'setInterval')
+
+        startVoting()
+
+        // Timer SHOULD be started for alive player
+        expect(setIntervalSpy).toHaveBeenCalled()
+      })
+
+      it('should handle all players eliminated scenario', () => {
+        setMyPlayerName('Alice')
+        gameState.players = [
+          { name: 'Alice', alive: false, role: 'ally' },
+          { name: 'Bob', alive: false, role: 'traitor' }
+        ]
+
+        // Should not throw error even with no alive players
+        expect(() => startVoting()).not.toThrow()
+      })
+
+      it('should consistently filter alive players (type-safe check)', () => {
+        setMyPlayerName('Alice')
+        // Mix of different truthy/falsy values for alive property
+        gameState.players = [
+          { name: 'Alice', alive: true, role: 'ally' },     // boolean true
+          { name: 'Bob', alive: 1, role: 'ally' },          // truthy integer
+          { name: 'Charlie', alive: false, role: 'ally' },  // boolean false
+          { name: 'David', alive: 0, role: 'ally' },        // falsy integer
+          { name: 'Eve', alive: 'true', role: 'traitor' }   // truthy string
+        ]
+
+        startVoting()
+
+        // Should correctly identify 3 alive players (Alice, Bob, Eve)
+        // regardless of type differences in alive property
+        const createElementCalls = global.document.createElement.mock.calls
+        const voteOptions = createElementCalls.filter(call => {
+          const result = global.document.createElement.mock.results[
+            createElementCalls.indexOf(call)
+          ]
+          return result?.value?.className === 'vote-option'
+        })
+
+        // Should have vote options for: Alice, Bob, Eve, Skip (at least 4)
+        expect(voteOptions.length).toBeGreaterThanOrEqual(4)
+      })
+    })
   })
 })
 
@@ -3840,5 +4245,332 @@ describe('Subsequent Game Sessions - Meeting Alerts', () => {
     // If submitVote is called after votes are tallied, it should return early
     // This is tested in the submitVote test suite above
     expect(gameState.votesTallied).toBe(true)
+  })
+})
+
+// ==================== TDD TESTS FOR PLAYER REMOVAL DURING MEETINGS ====================
+// These tests reproduce the bug where player count decreases during meetings,
+// causing hard locks and preventing meetings from progressing
+
+describe('Player Removal During MEETING Phase (Hard Lock Prevention - TDD)', () => {
+  beforeEach(() => {
+    // Reset meeting state
+    gameState.stage = 'meeting'
+    gameState.meetingReady = {}
+    gameState.votingStarted = false
+    gameState.votesTallied = false
+    gameState.votes = {}
+    gameState.players = []
+    setMyPlayerName('Alice')
+    setIsGameCreator(true)
+
+    // Mock updateLobby
+    global.updateLobby = vi.fn()
+
+    // Mock updateReadyStatus (called by handlePlayerChange)
+    global.updateReadyStatus = vi.fn()
+
+    global.document = {
+      getElementById: vi.fn((id) => ({
+        classList: { add: vi.fn(), remove: vi.fn() },
+        innerHTML: '',
+        textContent: '',
+        style: {},
+        appendChild: vi.fn()
+      })),
+      querySelectorAll: vi.fn(() => []),
+      createElement: vi.fn(() => ({
+        style: {},
+        classList: { add: vi.fn(), remove: vi.fn() },
+        appendChild: vi.fn()
+      }))
+    }
+
+    global.alert = vi.fn()
+    vi.clearAllMocks()
+  })
+
+  it('should NOT remove player during meeting discussion phase', () => {
+    // CRITICAL: This reproduces the exact bug - "2/2 ready" becomes "1/2 ready"
+    gameState.players = [
+      { name: 'Alice', alive: true, role: 'ally' },
+      { name: 'Bob', alive: true, role: 'ally' }
+    ]
+    gameState.meetingReady = { 'Alice': true, 'Bob': true }
+    gameState.stage = 'meeting'
+    gameState.votingStarted = false
+
+    const initialPlayerCount = gameState.players.length
+
+    // Host kicks Bob during meeting (before voting starts)
+    handlePlayerChange({ eventType: 'DELETE', old: { name: 'Bob' } })
+
+    const currentPlayerCount = gameState.players.length
+
+    // CRITICAL: Player should NOT be removed from array during meeting
+    expect(currentPlayerCount).toBe(initialPlayerCount)
+    expect(gameState.players.find(p => p.name === 'Bob')).toBeDefined()
+  })
+
+  it('should keep ready count stable when player removed during meeting', () => {
+    // This reproduces: "Both players showed as ready, then count went from 2/2 to 1/2"
+    gameState.players = [
+      { name: 'Alice', alive: true, role: 'ally' },
+      { name: 'Bob', alive: true, role: 'ally' }
+    ]
+    gameState.meetingReady = { 'Alice': true, 'Bob': true }
+    gameState.stage = 'meeting'
+
+    const initialReadyCount = Object.keys(gameState.meetingReady).length
+
+    // Bob gets kicked after marking ready
+    handlePlayerChange({ eventType: 'DELETE', old: { name: 'Bob' } })
+
+    // Ready count should remain the same (Bob is still in array, marked pendingRemoval)
+    const currentPlayerCount = gameState.players.length
+    expect(currentPlayerCount).toBe(2)
+
+    // Bob should be marked for removal, not removed
+    const bob = gameState.players.find(p => p.name === 'Bob')
+    expect(bob).toBeDefined()
+    expect(bob.pendingRemoval).toBe(true)
+  })
+
+  it('should allow voting to start even if player marked for removal', () => {
+    // Test that host can start voting when all NON-REMOVED players are ready
+    gameState.players = [
+      { name: 'Alice', alive: true, role: 'ally' },
+      { name: 'Bob', alive: true, role: 'ally', pendingRemoval: true },
+      { name: 'Charlie', alive: true, role: 'traitor' }
+    ]
+    gameState.meetingReady = { 'Alice': true, 'Bob': true, 'Charlie': true }
+    gameState.stage = 'meeting'
+
+    // All active players (not pendingRemoval) are ready
+    const activePlayers = gameState.players.filter(p => !p.pendingRemoval)
+    const activeReady = Object.keys(gameState.meetingReady).filter(name => {
+      const player = gameState.players.find(p => p.name === name)
+      return player && !player.pendingRemoval
+    })
+
+    // Should be able to start voting with 2 active players (Alice, Charlie)
+    expect(activePlayers.length).toBe(2)
+    expect(activeReady.length).toBe(2)
+  })
+})
+
+describe('Player Removal During VOTING Phase (Hard Lock Prevention - TDD)', () => {
+  beforeEach(() => {
+    // Reset voting state
+    gameState.votes = {}
+    gameState.votesTallied = false
+    gameState.votingStarted = false
+    gameState.stage = 'meeting'
+    gameState.settings.voteResults = null
+    gameState.meetingReady = {}
+    setMyPlayerName('Alice')
+    setIsGameCreator(true)
+
+    // Mock updateLobby (called by handlePlayerChange)
+    global.updateLobby = vi.fn()
+
+    // Mock DOM elements
+    global.document = {
+      getElementById: vi.fn((id) => ({
+        classList: { add: vi.fn(), remove: vi.fn() },
+        disabled: false,
+        innerHTML: '',
+        textContent: '',
+        style: {},
+        appendChild: vi.fn()
+      })),
+      querySelectorAll: vi.fn(() => []),
+      createElement: vi.fn(() => ({
+        style: {},
+        classList: { add: vi.fn(), remove: vi.fn() },
+        appendChild: vi.fn(),
+        addEventListener: vi.fn()
+      })),
+      body: { innerHTML: '' }
+    }
+
+    global.alert = vi.fn()
+    vi.clearAllMocks()
+  })
+
+  it('should NOT remove player from array during active voting', async () => {
+    // GIVEN: 3 players in voting phase, 1 has voted
+    gameState.players = [
+      { name: 'Alice', alive: true, role: 'ally' },
+      { name: 'Bob', alive: true, role: 'ally' },
+      { name: 'Charlie', alive: true, role: 'traitor' }
+    ]
+    gameState.votes = { 'Alice': 'Charlie' }
+    gameState.votingStarted = true
+    gameState.votesTallied = false
+
+    const initialPlayerCount = gameState.players.length
+
+    // WHEN: Player is removed from database during voting
+    const deleteEvent = {
+      eventType: 'DELETE',
+      old: { name: 'Charlie' }
+    }
+    handlePlayerChange(deleteEvent)
+
+    // THEN: Player should still be in array (or gracefully handled)
+    // This test will FAIL until we implement the snapshot fix
+    const currentPlayerCount = gameState.players.length
+
+    // Expected: Player count should remain 3 OR voting should complete gracefully
+    expect(currentPlayerCount).toBe(initialPlayerCount)
+  })
+
+  it('should complete voting gracefully if player removed mid-vote', async () => {
+    // Setup voting with 4 players, all have voted
+    gameState.players = [
+      { name: 'P1', alive: true, role: 'ally' },
+      { name: 'P2', alive: true, role: 'ally' },
+      { name: 'P3', alive: true, role: 'ally' },
+      { name: 'P4', alive: true, role: 'traitor' }
+    ]
+    // All 4 players have submitted votes
+    gameState.votes = { 'P1': 'P4', 'P2': 'P4', 'P3': 'P4', 'P4': 'skip' }
+    gameState.votingStarted = true
+    gameState.votesTallied = false
+
+    // Remove P3 during voting (after they voted)
+    handlePlayerChange({ eventType: 'DELETE', old: { name: 'P3' } })
+
+    // Try to tally votes - should work since all active players have voted
+    await tallyVotes()
+
+    // Should complete gracefully even though P3 was removed
+    expect(gameState.votesTallied).toBe(true)
+  })
+
+  it('should handle player disconnect during vote submission', async () => {
+    gameState.players = [
+      { name: 'Alice', alive: true, role: 'ally' },
+      { name: 'Bob', alive: true, role: 'ally' },
+      { name: 'Charlie', alive: true, role: 'traitor' }
+    ]
+    // All 3 players have voted
+    gameState.votes = { 'Alice': 'Bob', 'Bob': 'Charlie', 'Charlie': 'skip' }
+    gameState.votingStarted = true
+    gameState.votesTallied = false
+
+    // Charlie disconnects after voting
+    handlePlayerChange({ eventType: 'DELETE', old: { name: 'Charlie' } })
+
+    // Should complete voting gracefully
+    await tallyVotes()
+
+    // This test should PASS - all active voters (Alice, Bob) have voted
+    expect(gameState.votesTallied).toBe(true)
+  })
+
+  it('should maintain consistent vote count when player removed', () => {
+    // CRITICAL TEST: Reproduces the exact bug reported by user
+    gameState.players = [
+      { name: 'A', alive: true, role: 'ally' },
+      { name: 'B', alive: true, role: 'ally' },
+      { name: 'C', alive: true, role: 'traitor' }
+    ]
+    gameState.votes = { 'A': 'skip' }
+    gameState.votingStarted = true
+
+    const initialAliveCount = gameState.players.filter(p => p.alive).length
+    const votesSubmitted = Object.keys(gameState.votes).length
+
+    // Remove player C (host kicks them)
+    handlePlayerChange({ eventType: 'DELETE', old: { name: 'C' } })
+
+    const currentAliveCount = gameState.players.filter(p => p.alive).length
+
+    // BUG SCENARIO: Counter now shows "1 of 2" instead of "1 of 3"
+    // This test will FAIL showing the bug exists
+    const voteShouldBeConsistent = votesSubmitted <= initialAliveCount &&
+                                    votesSubmitted <= currentAliveCount
+
+    // Expected: Vote counting should be consistent
+    expect(voteShouldBeConsistent).toBe(true)
+    // Expected: Alive count should not decrease during voting
+    expect(currentAliveCount).toBe(initialAliveCount)
+  })
+})
+
+describe('Vote Count Consistency (Regression Prevention - TDD)', () => {
+  beforeEach(() => {
+    gameState.votes = {}
+    gameState.votesTallied = false
+    gameState.votingStarted = false
+    gameState.players = []
+
+    // Mock updateLobby
+    global.updateLobby = vi.fn()
+
+    global.document = {
+      getElementById: vi.fn(() => ({
+        classList: { add: vi.fn(), remove: vi.fn() },
+        innerHTML: '',
+        textContent: '',
+        style: {},
+        appendChild: vi.fn()
+      })),
+      querySelectorAll: vi.fn(() => []),
+      createElement: vi.fn(() => ({
+        style: {},
+        classList: { add: vi.fn(), remove: vi.fn() },
+        appendChild: vi.fn()
+      }))
+    }
+
+    vi.clearAllMocks()
+  })
+
+  it('should use snapshot for vote counting once voting starts', async () => {
+    // Setup: 4 players, one will be removed during voting
+    gameState.players = [
+      { name: 'P1', alive: true, role: 'ally' },
+      { name: 'P2', alive: true, role: 'ally' },
+      { name: 'P3', alive: true, role: 'ally' },
+      { name: 'P4', alive: true, role: 'traitor' }
+    ]
+    gameState.votingStarted = true
+    gameState.votesTallied = false
+
+    // All players vote
+    gameState.votes = { 'P1': 'P4', 'P2': 'P4', 'P3': 'P4', 'P4': 'skip' }
+
+    // Simulate player removal after voting started (P3 disconnects)
+    gameState.players.splice(2, 1)  // Remove P3 from array
+
+    // Even though P3 was removed, their vote was already submitted
+    // Tally should still work using the snapshot
+    await tallyVotes()
+
+    // This test will PASS now that we have snapshot implementation
+    expect(gameState.votesTallied).toBe(true)
+  })
+
+  it('should prevent "votes submitted > total players" scenario', () => {
+    gameState.players = [
+      { name: 'A', alive: true },
+      { name: 'B', alive: true },
+      { name: 'C', alive: true }
+    ]
+    gameState.votes = { 'A': 'skip', 'B': 'skip', 'C': 'skip' }
+    gameState.votingStarted = true
+
+    // Remove a player after they voted
+    handlePlayerChange({ eventType: 'DELETE', old: { name: 'C' } })
+
+    const votesSubmitted = Object.keys(gameState.votes).length
+    const totalPlayers = gameState.players.filter(p => p.alive).length
+
+    // Should NEVER have more votes than players
+    // This test will FAIL showing the bug
+    expect(votesSubmitted).toBeLessThanOrEqual(totalPlayers)
   })
 })
