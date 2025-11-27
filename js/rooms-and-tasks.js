@@ -20,7 +20,7 @@ const ROOMS_AND_TASKS = {
 "Kitchen": [
 "Heat Sensor Check: Open the oven/microwave door for 20 seconds, then close it.",
 "Cold Storage Audit: Open the fridge and name three items out loud.",
-"Utensil Sort: Use utensils to spell the word 'CREW' and then return them.",
+"Utensil Sort: Use utensils to spell the word 'ALLY' and then return them.",
 "Water Pressure Test: Run the sink for 3 seconds.",
 "Nutrient Calibration: Touch 3 different types of food and name them out loud."
 ],
@@ -49,6 +49,49 @@ const ROOMS_AND_TASKS = {
 "Put your head in the dryer for 10 seconds."
 ]
 };
+
+/*
+// This set of rooms and tasks is temporary until we can store different sets and users. 
+const ROOMS_AND_TASKS = {
+"Anywhere": [
+"Power Down Protocol: Close your eyes, stand still, and count out loud for 30 seconds."
+],
+"Outside": [
+"Stellar Navigation: Look at the sky for 20 seconds.",
+"Suspicious Surveillance: Stand in front of someone else's car for 20 seconds.",
+"House Boundary Scan: Touch all four outside corners of the church.",
+"Clear the Way: Go up and down the stairs 3 times.",
+"Touch Grass: Remove your footwear and stand on the grass for 5 seconds.",
+"Vehicle Diagnostics: Place your hand on a car tire for 20 seconds."
+],
+"Cultural Hall": [
+"Gymnasium Groove: Dance in the living room for 20 seconds.",
+"Remote Frequency Calibration: Find the TV remote and press any button.",
+"Light Sync: Turn each light switch in the room off, then on again."
+],
+"Kitchen": [
+"Heat Sensor Check: Open the oven/microwave door for 20 seconds, then close it.",
+"Cold Storage Audit: Open the fridge and name three items out loud.",
+"Utensil Sort: Use utensils to spell the word 'ALLY' and then return them.",
+"Water Pressure Test: Run the sink for 3 seconds.",
+"Nutrient Calibration: Touch 3 different types of food and name them out loud."
+],
+"Foyer": [
+"Couch Compression Test: Sit on every seat cushion once.",
+"Navigation Calibration: Open each door in the entry way."
+],
+"Relief Society Room": [
+"Musical Chairs: Set up and take down 5 different folding chairs",
+"Meditation Moment: Assume a meditative pose and hold it for 20 seconds.",
+"Initialization Routine: Do 1 pushup, 1 sit-up, and 1 jumping jack."
+],
+"Primary Room": [
+"Musical Chairs: Set up and take down 5 different folding chairs",
+"Meditation Moment: Assume a meditative pose and hold it for 20 seconds.",
+"Initialization Routine: Do 1 pushup, 1 sit-up, and 1 jumping jack."
+],
+};
+*/
 
 // Export for testing and module usage
 export { ROOMS_AND_TASKS };
