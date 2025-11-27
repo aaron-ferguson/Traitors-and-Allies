@@ -232,7 +232,11 @@ const diff = startX - currentX;
 
 // Only allow swipe left (positive diff)
 if (diff > 0 && diff < 100) {
+// Only prevent default if user is actually swiping (> 10px threshold)
+// This allows normal taps to work while preventing scroll during swipe
+if (diff > 10) {
 e.preventDefault();
+}
 // Temporarily disable transition for smooth following
 element.style.transition = 'none';
 element.style.transform = `translateX(-${diff}px)`;

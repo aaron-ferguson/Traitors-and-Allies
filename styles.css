@@ -172,11 +172,23 @@
             font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            /* Fast, specific transitions for mobile responsiveness */
+            transition: transform 0.1s ease-out,
+                        opacity 0.1s ease-out,
+                        background-color 0.15s ease-out,
+                        box-shadow 0.15s ease-out;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             min-height: 48px; /* Touch-friendly minimum */
             touch-action: manipulation; /* Prevents double-tap zoom */
+            /* Performance optimization hint */
+            will-change: transform;
+        }
+
+        /* Instant visual feedback on touch/click */
+        button:active {
+            transform: scale(0.98);
+            opacity: 0.9;
         }
 
         /* Desktop button sizing */
@@ -226,12 +238,23 @@
             background: #cccccc !important;
             transform: none !important;
             box-shadow: none !important;
+            /* Instant transition for disabled state */
+            transition: none !important;
+            /* Prevent any interaction */
+            pointer-events: none;
         }
 
         button:disabled:hover,
         button[disabled]:hover {
             transform: none !important;
             box-shadow: none !important;
+        }
+
+        /* Prevent active state on disabled buttons */
+        button:disabled:active,
+        button[disabled]:active {
+            transform: none !important;
+            opacity: 0.5 !important;
         }
 
         .btn-warning {
