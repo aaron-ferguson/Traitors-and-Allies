@@ -4574,3 +4574,189 @@ describe('Vote Count Consistency (Regression Prevention - TDD)', () => {
     expect(votesSubmitted).toBeLessThanOrEqual(totalPlayers)
   })
 })
+
+describe('Multiple Meetings in Same Session', () => {
+  let mockElements
+
+  beforeEach(() => {
+    // Reset game state
+    gameState.stage = 'playing'
+    gameState.players = [
+      { name: 'Alice', role: 'ally', alive: true, tasks: [], tasksCompleted: 0 },
+      { name: 'Bob', role: 'ally', alive: true, tasks: [], tasksCompleted: 0 },
+      { name: 'Charlie', role: 'traitor', alive: true, tasks: [], tasksCompleted: 0 }
+    ]
+    gameState.meetingReady = {}
+    gameState.votes = {}
+    gameState.votingStarted = false
+    gameState.votesTallied = false
+    gameState.meetingCaller = null
+    gameState.meetingType = null
+    gameState.settings = { ...gameState.settings, voteResults: null }
+
+    // Mock DOM elements for meeting and voting UI
+    mockElements = {
+      'meeting-phase': { classList: { add: vi.fn(), remove: vi.fn(), contains: vi.fn(() => false) } },
+      'discussion-phase': { classList: { add: vi.fn(), remove: vi.fn(), contains: vi.fn(() => false) } },
+      'voting-phase': { classList: { add: vi.fn(), remove: vi.fn(), contains: vi.fn(() => false) } },
+      'vote-results': { classList: { add: vi.fn(), remove: vi.fn(), contains: vi.fn(() => false) } },
+      'game-phase': { classList: { add: vi.fn(), remove: vi.fn(), contains: vi.fn(() => false) } }
+    }
+
+    global.document = {
+      getElementById: vi.fn((id) => mockElements[id] || {
+        classList: { add: vi.fn(), remove: vi.fn(), contains: vi.fn(() => false) },
+        textContent: '',
+        disabled: false
+      }),
+      querySelector: vi.fn(() => ({ textContent: '' }))
+    }
+
+    setMyPlayerName('Alice')
+    setIsGameCreator(true)
+  })
+
+  it('should clear vote results when starting second meeting', () => {
+    // First meeting - set up vote results
+    gameState.settings.voteResults = {
+      voteCounts: { 'Bob': 2, 'skip': 1 },
+      eliminatedPlayer: 'Bob',
+      isTie: false
+    }
+    gameState.votesTallied = true
+
+    // Resume game (clear meeting state)
+    resumeGame()
+
+    // Verify vote results cleared
+    expect(gameState.settings.voteResults).toBeNull()
+    expect(gameState.votesTallied).toBe(false)
+    expect(gameState.votes).toEqual({})
+    expect(gameState.votingStarted).toBe(false)
+  })
+
+  it('should hide vote-results card when starting second meeting', () => {
+    // Simulate first meeting completed with results showing
+    gameState.settings.voteResults = { voteCounts: {}, eliminatedPlayer: null, isTie: false }
+    gameState.votesTallied = true
+
+    // Resume game
+    resumeGame()
+
+    // Verify vote-results is hidden
+    expect(mockElements['vote-results'].classList.add).toHaveBeenCalledWith('hidden')
+  })
+
+  it('should properly sequence UI states across multiple meetings', () => {
+    // MEETING 1: Call meeting
+    gameState.meetingCaller = 'Alice'
+    gameState.meetingType = 'emergency'
+
+    // Discussion phase should be shown, others hidden
+    acknowledgeMeeting()
+    expect(mockElements['discussion-phase'].classList.remove).toHaveBeenCalledWith('hidden')
+    expect(mockElements['voting-phase'].classList.add).toHaveBeenCalledWith('hidden')
+    expect(mockElements['vote-results'].classList.add).toHaveBeenCalledWith('hidden')
+
+    // Start voting
+    startVoting()
+    expect(mockElements['voting-phase'].classList.remove).toHaveBeenCalledWith('hidden')
+    expect(mockElements['discussion-phase'].classList.add).toHaveBeenCalledWith('hidden')
+
+    // Display results
+    gameState.votesTallied = true
+    displayVoteResults({ 'Bob': 1, 'skip': 2 }, null, false)
+    expect(mockElements['vote-results'].classList.remove).toHaveBeenCalledWith('hidden')
+
+    // Resume game
+    resumeGame()
+    expect(mockElements['game-phase'].classList.remove).toHaveBeenCalledWith('hidden')
+    expect(mockElements['meeting-phase'].classList.add).toHaveBeenCalledWith('hidden')
+    expect(mockElements['vote-results'].classList.add).toHaveBeenCalledWith('hidden')
+
+    // MEETING 2: Call another meeting - should reset state
+    gameState.meetingCaller = 'Charlie'
+    gameState.meetingType = 'report'
+
+    acknowledgeMeeting()
+
+    // Verify clean slate for second meeting
+    expect(gameState.votesTallied).toBe(false)
+    expect(gameState.votes).toEqual({})
+    expect(mockElements['discussion-phase'].classList.remove).toHaveBeenCalled()
+    expect(mockElements['vote-results'].classList.add).toHaveBeenCalledWith('hidden')
+  })
+
+  it('should not show stale voteResults from previous meeting', () => {
+    // First meeting results
+    const firstMeetingResults = {
+      voteCounts: { 'Bob': 2 },
+      eliminatedPlayer: 'Bob',
+      isTie: false
+    }
+    gameState.settings.voteResults = firstMeetingResults
+    gameState.votesTallied = true
+
+    // Resume game (clears votesTallied flag)
+    resumeGame()
+
+    // Start second meeting
+    gameState.meetingCaller = 'Alice'
+    acknowledgeMeeting()
+
+    // Even if database still has old voteResults, votesTallied is false
+    // so displayVoteResults should not be triggered by subscription
+    expect(gameState.votesTallied).toBe(false)
+
+    // If subscription callback checks votesTallied flag, it won't display stale results
+    // This is the guard we added in supabase-backend.js
+  })
+
+  it('should maintain correct meeting caller across sessions', () => {
+    // First meeting
+    gameState.meetingCaller = 'Alice'
+    acknowledgeMeeting()
+    expect(gameState.meetingCaller).toBe('Alice')
+
+    // Resume
+    resumeGame()
+    expect(gameState.meetingCaller).toBeNull()
+
+    // Second meeting with different caller
+    gameState.meetingCaller = 'Charlie'
+    acknowledgeMeeting()
+    expect(gameState.meetingCaller).toBe('Charlie')
+  })
+
+  it('should reset votingStarted flag between meetings', () => {
+    // First meeting - start voting
+    gameState.votingStarted = true
+    gameState.votesTallied = true
+
+    // Resume game
+    resumeGame()
+
+    // Verify flag reset
+    expect(gameState.votingStarted).toBe(false)
+    expect(gameState.votesTallied).toBe(false)
+
+    // Second meeting - should start clean
+    expect(gameState.votingStarted).toBe(false)
+  })
+
+  it('should clear meetingReady status between meetings', () => {
+    // First meeting - players acknowledge
+    gameState.meetingReady = { 'Alice': true, 'Bob': true, 'Charlie': true }
+
+    // Resume game
+    resumeGame()
+
+    // Verify ready status cleared
+    expect(gameState.meetingReady).toEqual({})
+
+    // Second meeting should start with empty ready status
+    gameState.meetingCaller = 'Bob'
+    acknowledgeMeeting()
+    expect(Object.keys(gameState.meetingReady).length).toBeLessThanOrEqual(1)
+  })
+})
