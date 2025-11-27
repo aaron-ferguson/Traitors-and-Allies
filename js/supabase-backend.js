@@ -695,8 +695,8 @@ console.log('✓ All players now:', gameState.players.map(p => `${p.name}(alive:
 console.log('Calling updateLobby()...');
 updateLobby();
 } else {
-console.warn('⚠️ Player already exists in local array, skipping INSERT');
-console.warn('⚠️ Existing player:', gameState.players[existingIndex]);
+console.log('Player already in local state (optimistic update worked), skipping duplicate INSERT');
+console.log('Existing player:', gameState.players[existingIndex]);
 }
 console.log('=========================');
 } else if (eventType === 'UPDATE') {
