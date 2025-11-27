@@ -198,6 +198,14 @@ function processGameUpdate(newData) {
     const totalAlivePlayers = alivePlayers.length;
     const votesSubmitted = Object.keys(gameState.votes).length;
 
+    console.log('=== VOTE COUNT CHECK ===');
+    console.log('Total players in gameState:', gameState.players.length);
+    console.log('All players:', gameState.players.map(p => `${p.name}(alive:${p.alive})`));
+    console.log('Alive players count:', totalAlivePlayers);
+    console.log('Alive players:', alivePlayers.map(p => p.name));
+    console.log('Votes submitted:', votesSubmitted);
+    console.log('========================');
+
     // Check if vote results are available - display them for ALL players
     // Vote results are in settings (single writer - host only, no need for atomic)
     if (newData.settings && newData.settings.voteResults) {
@@ -663,11 +671,15 @@ const { eventType, new: newData, old: oldData } = payload;
 
 if (eventType === 'INSERT') {
 // New player joined
-console.log('INSERT event - new player:', newData.name);
+console.log('=== PLAYER INSERT EVENT ===');
+console.log('New player name:', newData.name);
+console.log('New player data:', newData);
+console.log('Current players in gameState:', gameState.players.map(p => p.name));
 const existingIndex = gameState.players.findIndex(p => p.name === newData.name);
-console.log('Existing index:', existingIndex);
+console.log('Duplicate check - existing index:', existingIndex);
+
 if (existingIndex === -1) {
-gameState.players.push({
+const newPlayer = {
 name: newData.name,
 role: newData.role,
 ready: newData.ready,
@@ -675,12 +687,18 @@ tasks: newData.tasks || [],
 alive: Boolean(newData.alive),
 tasksCompleted: newData.tasks_completed || 0,
 votedFor: newData.voted_for
-});
-console.log('Player added! New player count:', gameState.players.length);
+};
+gameState.players.push(newPlayer);
+console.log('✓ Player added to local state:', newPlayer.name);
+console.log('✓ New player count:', gameState.players.length);
+console.log('✓ All players now:', gameState.players.map(p => `${p.name}(alive:${p.alive})`));
 console.log('Calling updateLobby()...');
 updateLobby();
 } else {
-console.log('Player already exists in local array, skipping');
+console.warn('⚠️ Player already exists in local array, skipping INSERT');
+console.warn('⚠️ Existing player:', gameState.players[existingIndex]);
+}
+console.log('=========================');
 }
 } else if (eventType === 'UPDATE') {
 // Player updated
