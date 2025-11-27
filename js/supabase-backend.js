@@ -761,9 +761,12 @@ console.log('Player updated! Updating UI...');
 // Call appropriate UI update based on current stage
 if (gameState.stage === 'playing') {
 // If we're in the game, update the gameplay display
-// Import displayGameplay from game-logic if needed
-if (typeof window.displayGameplay === 'function') {
+// Only re-render if the updated player is the current player (prevents unnecessary task list rebuilds)
+if (typeof window.displayGameplay === 'function' && newData.name === gameState.currentPlayer) {
+console.log('Updated player is current player - re-rendering gameplay');
 window.displayGameplay();
+} else if (newData.name !== gameState.currentPlayer) {
+console.log('Updated player is not current player - skipping re-render to preserve scroll');
 }
 } else {
 // If we're in waiting room, update lobby

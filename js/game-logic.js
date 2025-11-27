@@ -973,12 +973,53 @@ const tasksContainer = document.getElementById('player-tasks');
 const completedCount = document.getElementById('completed-tasks-count');
 const totalCount = document.getElementById('total-tasks-count');
 
+if (!tasksContainer) return;
+
+// Check if task count changed (tasks added/removed)
+const currentTaskCount = tasksContainer.children.length;
+const newTaskCount = player.tasks?.length || 0;
+
+// Update completed/total counts
+if (completedCount) completedCount.textContent = player.tasksCompleted || 0;
+if (totalCount) totalCount.textContent = newTaskCount;
+
+if (currentTaskCount === newTaskCount && currentTaskCount > 0) {
+// Incremental update: just update checkbox states
+updateTaskCheckboxes(player, tasksContainer);
+return;
+}
+
+// Full rebuild needed (task count changed or first render)
+const scrollPos = window.scrollY || window.pageYOffset;
+
 tasksContainer.innerHTML = '';
-completedCount.textContent = player.tasksCompleted || 0;
-totalCount.textContent = player.tasks.length;
 
 // Display each task with a checkbox
 player.tasks.forEach((taskObj, index) => {
+const taskElement = createTaskElement(taskObj, index);
+tasksContainer.appendChild(taskElement);
+});
+
+// Restore scroll after rebuild
+requestAnimationFrame(() => {
+window.scrollTo(0, scrollPos);
+});
+}
+
+// Helper: Incremental checkbox updates
+function updateTaskCheckboxes(player, container) {
+Array.from(container.children).forEach((taskElement, index) => {
+const checkbox = taskElement.querySelector('input[type="checkbox"]');
+const taskObj = player.tasks[index];
+
+if (checkbox && taskObj) {
+checkbox.checked = taskObj.completed || false;
+}
+});
+}
+
+// Helper: Create task element
+function createTaskElement(taskObj, index) {
 const taskItem = document.createElement('div');
 taskItem.style.cssText = 'display: flex; align-items: center; padding: 8px; margin-bottom: 5px; background: rgba(255,255,255,0.05); border-radius: 5px;';
 
@@ -998,8 +1039,8 @@ label.textContent = `${taskObj.task} (${taskObj.room})`;
 
 taskItem.appendChild(checkbox);
 taskItem.appendChild(label);
-tasksContainer.appendChild(taskItem);
-});
+
+return taskItem;
 }
 
 function toggleTaskComplete(taskIndex) {
