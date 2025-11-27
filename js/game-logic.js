@@ -1135,10 +1135,16 @@ btn.style.opacity = '0.6';
 }
 
 // Hide the call meeting button
-document.getElementById('call-meeting-btn').parentElement.classList.add('hidden');
+const btnParent = btn?.parentElement;
+if (btnParent) {
+btnParent.classList.add('hidden');
+}
 
 // Show the meeting type selection
-document.getElementById('meeting-type-selection').classList.remove('hidden');
+const meetingTypeSelection = document.getElementById('meeting-type-selection');
+if (meetingTypeSelection) {
+meetingTypeSelection.classList.remove('hidden');
+}
 
 // Re-enable button after animation completes
 setTimeout(() => {
@@ -1156,9 +1162,13 @@ const meetingsRemaining = gameState.settings.meetingLimit - meetingsUsed;
 // Update emergency meeting button text
 const emergencyBtn = document.getElementById('emergency-meeting-btn');
 const emergencyText = document.getElementById('emergency-meetings-text');
+
+if (emergencyText) {
 emergencyText.textContent = `${meetingsRemaining} emergency meeting${meetingsRemaining !== 1 ? 's' : ''} remaining`;
+}
 
 // Enable/disable emergency meeting button based on meetings remaining
+if (emergencyBtn) {
 if (meetingsRemaining <= 0) {
 emergencyBtn.disabled = true;
 emergencyBtn.style.opacity = '0.5';
@@ -1169,6 +1179,7 @@ emergencyBtn.disabled = false;
 emergencyBtn.style.opacity = '';  // Remove inline opacity to use CSS defaults
 emergencyBtn.style.cursor = '';   // Remove inline cursor to use CSS defaults
 emergencyBtn.style.background = ''; // Remove any lingering background override
+}
 }
 }
 
