@@ -976,7 +976,8 @@ const totalCount = document.getElementById('total-tasks-count');
 if (!tasksContainer) return;
 
 // Check if task count changed (tasks added/removed)
-const currentTaskCount = tasksContainer.children.length;
+// In test environments, children might not exist on mock elements
+const currentTaskCount = tasksContainer.children?.length || 0;
 const newTaskCount = player.tasks?.length || 0;
 
 // Update completed/total counts
