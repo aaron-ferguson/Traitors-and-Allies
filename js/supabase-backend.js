@@ -699,7 +699,6 @@ console.warn('⚠️ Player already exists in local array, skipping INSERT');
 console.warn('⚠️ Existing player:', gameState.players[existingIndex]);
 }
 console.log('=========================');
-}
 } else if (eventType === 'UPDATE') {
 // Player updated
 console.log('UPDATE event - player:', newData.name);
