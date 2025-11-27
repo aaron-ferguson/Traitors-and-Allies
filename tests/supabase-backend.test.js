@@ -86,6 +86,7 @@ describe('Supabase Backend - Player Change Handling', () => {
         { name: 'Player1', role: null, ready: true, tasks: [], alive: true, tasksCompleted: 0 }
       ]
       setMyPlayerName('Player1')
+      gameState.currentPlayer = 'Player1' // Set current player for Phase 3 optimization check
 
       const payload = {
         eventType: 'UPDATE',

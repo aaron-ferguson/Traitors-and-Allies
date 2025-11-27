@@ -3210,7 +3210,7 @@ describe('Meeting Flow', () => {
   })
 
   describe('Meeting limit enforcement', () => {
-    it('should always show meeting type selection', () => {
+    it('should always show meeting type selection', async () => {
       gameState.players = [
         { name: 'Player1', role: 'ally', alive: true, emergencyMeetingsUsed: 0 }
       ]
@@ -3218,6 +3218,9 @@ describe('Meeting Flow', () => {
       gameState.settings.meetingLimit = 1
 
       callMeeting()
+
+      // Wait for setTimeout(0) to fire
+      await new Promise(resolve => setTimeout(resolve, 10))
 
       expect(mockElements.meetingTypeSelection.classList.remove).toHaveBeenCalledWith('hidden')
     })
