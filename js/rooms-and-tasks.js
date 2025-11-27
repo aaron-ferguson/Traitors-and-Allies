@@ -90,6 +90,10 @@ const ROOMS_AND_TASKS = {
 "Meditation Moment: Assume a meditative pose and hold it for 20 seconds.",
 "Initialization Routine: Do 1 pushup, 1 sit-up, and 1 jumping jack."
 ],
+"Nursery": [
+"Singing Time: Sing a nursery rhyme from start to finish.",
+"Play Time: Play with a toy for 20 seconds."
+]
 };
 */
 
