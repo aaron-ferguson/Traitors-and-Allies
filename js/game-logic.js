@@ -150,6 +150,11 @@ gameEnded: false,
 winner: null
 });
 
+// Clean up URL by removing game session code
+// This removes ?room=ABC123 from the URL when returning to menu
+const baseUrl = window.location.origin + window.location.pathname;
+window.history.pushState({}, '', baseUrl);
+
 // Hide all phases, show menu
 document.getElementById('setup-phase').classList.add('hidden');
 document.getElementById('waiting-room').classList.add('hidden');
