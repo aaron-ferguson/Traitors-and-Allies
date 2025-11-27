@@ -1157,10 +1157,12 @@ meetingTypeSelection.classList.remove('hidden');
 // Scroll card into view after showing it
 // Use requestAnimationFrame to ensure the card is rendered before scrolling
 requestAnimationFrame(() => {
+if (typeof meetingTypeSelection.scrollIntoView === 'function') {
 meetingTypeSelection.scrollIntoView({
 behavior: 'smooth',
 block: 'nearest'
 });
+}
 });
 }
 
